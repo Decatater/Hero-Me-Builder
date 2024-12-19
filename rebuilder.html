@@ -922,8 +922,30 @@ async function attachModelAtPoint(modelPath) {
                         const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                         mesh.quaternion.premultiply(flipQuat);
                     }
+                } else if (selectedPoint.userData.attachmentType === 'fanguard') {
+                    // First align mounting faces
+                    const normalQuat = new THREE.Quaternion();
+                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                    mesh.quaternion.copy(normalQuat);
+
+                    // Get the orientation face direction after hole alignment
+                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+
+                    // Project orientation onto YZ plane
+                    const projected = new THREE.Vector3(0, rotatedOrientation.y, rotatedOrientation.z).normalize();
+                    
+                    // Find angle to rotate around X axis to get as close to Y+ as possible
+                    const angle = Math.atan2(projected.z, projected.y);
+                    
+                    // Create and apply rotation around the hole alignment axis (X)
+                    const alignQuat = new THREE.Quaternion().setFromAxisAngle(
+                        new THREE.Vector3(1, 0, 0),
+                        angle
+                    );
+                    
+                    mesh.quaternion.premultiply(alignQuat);
                 } else {
-                    // Original alignment logic for non-hotend parts
+                    // Original alignment logic for other parts
                     const orientQuat = new THREE.Quaternion();
                     orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
 
