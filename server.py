@@ -6,6 +6,10 @@ from pathlib import Path
 
 class DirectoryHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
+        # Add .json to the types map if not already present
+        if not '.json' in self.extensions_map:
+            self.extensions_map['.json'] = 'application/json'
+
         if self.path == '/list-files':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -17,6 +21,7 @@ class DirectoryHandler(http.server.SimpleHTTPRequestHandler):
             
             self.wfile.write(json.dumps(directory_structure).encode())
             return
+
         return super().do_GET()
     
     def get_directory_structure(self, path):
@@ -30,7 +35,7 @@ class DirectoryHandler(http.server.SimpleHTTPRequestHandler):
                         'path': str(entry.relative_to('.')),
                         'children': self.get_directory_structure(entry)
                     })
-                elif entry.suffix.lower() == '.stl':
+                elif entry.suffix.lower() in ['.stl', '.json']:
                     structure.append({
                         'type': 'file',
                         'name': entry.name,
