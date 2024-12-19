@@ -1,0 +1,11 @@
+Part Cooling for Elegoo Neptune 3 - 3 Pro - 3 Plus - 3 Max 
+
+Hero Me Gen7 based part cooling for the completely stock printhead assemblies on these printers. 
+
+Go to this directory in the Zip:
+
+/Gantry Adapters/Elegoo Neptune/Neptune 3-Pro-Plus-Max STOCK/
+
+In there you will find a unique Hero Me Gen7 part cooling solution that is mixed with the stock shroud of these printers. 
+
+The only options are ADXL345 mounts. None of the Hero Me Gen7 components will work on these as they do not use the Hero Me Gen7 Base as a core.
