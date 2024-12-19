@@ -820,143 +820,147 @@
     }
 }
 
-    async function attachModelAtPoint(modelPath) {
-        if (!selectedPoint || !modelPath) return;
+async function attachModelAtPoint(modelPath) {
+    if (!selectedPoint || !modelPath) return;
 
-        try {
-            const baseGeometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
-            const attachGeometryData = await loadGeometryData(modelPath);
+    try {
+        const baseGeometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
+        const attachGeometryData = await loadGeometryData(modelPath);
 
-            if (!baseGeometryData || !attachGeometryData) {
-                console.error('Failed to load geometry data');
-                return;
-            }
+        if (!baseGeometryData || !attachGeometryData) {
+            console.error('Failed to load geometry data');
+            return;
+        }
 
-            // Get orientation from both models
-            const baseOrientation = new THREE.Vector3(
-                baseGeometryData.orientationFace.normal.x,
-                baseGeometryData.orientationFace.normal.y,
-                baseGeometryData.orientationFace.normal.z
-            ).normalize();
+        // Get orientation from both models
+        const baseOrientation = new THREE.Vector3(
+            baseGeometryData.orientationFace.normal.x,
+            baseGeometryData.orientationFace.normal.y,
+            baseGeometryData.orientationFace.normal.z
+        ).normalize();
 
-            const attachOrientation = new THREE.Vector3(
-                attachGeometryData.orientationFace.normal.x,
-                attachGeometryData.orientationFace.normal.y,
-                attachGeometryData.orientationFace.normal.z
-            ).normalize();
+        const attachOrientation = new THREE.Vector3(
+            attachGeometryData.orientationFace.normal.x,
+            attachGeometryData.orientationFace.normal.y,
+            attachGeometryData.orientationFace.normal.z
+        ).normalize();
 
-            // Find matching faces
-            const attachmentPointWorld = new THREE.Vector3();
-            selectedPoint.getWorldPosition(attachmentPointWorld);
-            const localPoint = attachmentPointWorld.clone()
-                .applyMatrix4(mainModel.matrixWorld.clone().invert());
+        // Find matching faces
+        const attachmentPointWorld = new THREE.Vector3();
+        selectedPoint.getWorldPosition(attachmentPointWorld);
+        const localPoint = attachmentPointWorld.clone()
+            .applyMatrix4(mainModel.matrixWorld.clone().invert());
 
-            let closestFace = null;
-            let minDistance = Infinity;
+        let closestFace = null;
+        let minDistance = Infinity;
 
-            for (const face of baseGeometryData.faces) {
-                if (face.holes && face.holes.length > 0) {
-                    const center = calculateHolePatternCenter(face.holes);
-                    const distance = localPoint.distanceTo(
-                        new THREE.Vector3(center.x, center.y, center.z)
-                    );
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestFace = face;
-                    }
+        for (const face of baseGeometryData.faces) {
+            if (face.holes && face.holes.length > 0) {
+                const center = calculateHolePatternCenter(face.holes);
+                const distance = localPoint.distanceTo(
+                    new THREE.Vector3(center.x, center.y, center.z)
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestFace = face;
                 }
             }
+        }
 
-            const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces);
+        const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces);
 
-            if (!matchingFace) {
-                console.error('No matching face pattern found');
-                return;
-            }
+        if (!matchingFace) {
+            console.error('No matching face pattern found');
+            return;
+        }
 
-            const loader = new THREE.STLLoader();
-            loader.load(modelPath, function (geometry) {
-                const material = new THREE.MeshPhongMaterial({
-                    color: 0xff0000,
-                    flatShading: false
-                });
+        const loader = new THREE.STLLoader();
+        loader.load(modelPath, function(geometry) {
+            const material = new THREE.MeshPhongMaterial({
+                color: 0xff0000,
+                flatShading: false
+            });
 
-                const mesh = new THREE.Mesh(geometry, material);
+            const mesh = new THREE.Mesh(geometry, material);
 
-                // Center the geometry
-                geometry.computeBoundingBox();
-                const center = geometry.boundingBox.getCenter(new THREE.Vector3());
-                geometry.translate(-center.x, -center.y, -center.z);
+            // Center the geometry
+            geometry.computeBoundingBox();
+            const center = geometry.boundingBox.getCenter(new THREE.Vector3());
+            geometry.translate(-center.x, -center.y, -center.z);
 
-                const baseHoles = closestFace.holes;
-                const attachHoles = matchingFace.holes;
+            const baseHoles = closestFace.holes;
+            const attachHoles = matchingFace.holes;
 
-                if (baseHoles.length >= 2 && attachHoles.length >= 2) {
-                    // Calculate centers of hole patterns
-                    const baseCenter = calculateHolePatternCenter(baseHoles);
-                    const attachCenter = calculateHolePatternCenter(attachHoles);
+            if (baseHoles.length >= 2 && attachHoles.length >= 2) {
+                // Calculate centers of hole patterns
+                const baseCenter = calculateHolePatternCenter(baseHoles);
+                const attachCenter = calculateHolePatternCenter(attachHoles);
 
-                    // First align orientations
+                // Get face normals
+                const baseNormal = new THREE.Vector3(
+                    closestFace.normal.x,
+                    closestFace.normal.y,
+                    closestFace.normal.z
+                );
+                const attachNormal = new THREE.Vector3(
+                    matchingFace.normal.x,
+                    matchingFace.normal.y,
+                    matchingFace.normal.z
+                );
+
+                if (selectedPoint.userData.attachmentType === 'hotend') {
+                    // First align mounting faces and holes
+                    const normalQuat = new THREE.Quaternion();
+                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                    mesh.quaternion.copy(normalQuat);
+
+                    // Check orientation face after hole alignment
+                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+                    
+                    // If orientation face isn't pointing up, rotate 180° around base normal
+                    if (rotatedOrientation.y < 0) {
+                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                        mesh.quaternion.premultiply(flipQuat);
+                    }
+                } else {
+                    // Original alignment logic for non-hotend parts
                     const orientQuat = new THREE.Quaternion();
                     orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
 
-                    // Get face normals
-                    const baseNormal = new THREE.Vector3(
-                        closestFace.normal.x,
-                        closestFace.normal.y,
-                        closestFace.normal.z
-                    );
-                    const attachNormal = new THREE.Vector3(
-                        matchingFace.normal.x,
-                        matchingFace.normal.y,
-                        matchingFace.normal.z
-                    );
-
-                    // Create face alignment quaternion
                     const normalQuat = new THREE.Quaternion();
                     normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
 
-                    // Get hole pattern directions for rotation
-                    const baseVec = new THREE.Vector3().subVectors(
-                        new THREE.Vector3(baseHoles[1].position.x, baseHoles[1].position.y, baseHoles[1].position.z),
-                        new THREE.Vector3(baseHoles[0].position.x, baseHoles[0].position.y, baseHoles[0].position.z)
-                    ).normalize();
-
-                    const attachVec = new THREE.Vector3().subVectors(
-                        new THREE.Vector3(attachHoles[1].position.x, attachHoles[1].position.y, attachHoles[1].position.z),
-                        new THREE.Vector3(attachHoles[0].position.x, attachHoles[0].position.y, attachHoles[0].position.z)
-                    ).normalize();
-
-                    // Apply orientations
-                    const combinedQuat = normalQuat.multiply(orientQuat);
-                    mesh.quaternion.copy(combinedQuat);
-
-                    // Transform attachment center by our rotation
-                    const transformedAttachCenter = attachCenter.clone().applyQuaternion(combinedQuat);
-
-                    // Position based on pattern centers
-                    const offset = baseCenter.clone().sub(transformedAttachCenter);
-
-                    // Add a small offset along normal to prevent intersection
-                    const normalOffset = baseNormal.clone().multiplyScalar(2);
-                    mesh.position.copy(offset.add(normalOffset));
+                    const finalQuat = normalQuat.multiply(orientQuat);
+                    mesh.quaternion.copy(finalQuat);
                 }
 
-                mainModel.add(mesh);
+                // Transform attachment center by our rotation
+                const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
 
-                // Reset UI
-                const dropdown = document.querySelector('.dropdown');
-                if (dropdown) dropdown.value = '';
-                document.getElementById('modelSelect').style.display = 'none';
-                selectedPoint = null;
+                // Position based on pattern centers
+                const offset = baseCenter.clone().sub(transformedAttachCenter);
+                
+                // Add offset to prevent intersection
+                const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? 5 : 2;
+                const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
+                mesh.position.copy(offset.add(normalOffset));
+            }
 
-                renderer.render(scene, camera);
-            });
+            mainModel.add(mesh);
 
-        } catch (error) {
-            console.error('Error in attachModelAtPoint:', error);
-        }
+            // Reset UI
+            const dropdown = document.querySelector('.dropdown');
+            if (dropdown) dropdown.value = '';
+            document.getElementById('modelSelect').style.display = 'none';
+            selectedPoint = null;
+
+            renderer.render(scene, camera);
+        });
+
+    } catch (error) {
+        console.error('Error in attachModelAtPoint:', error);
     }
+}
 
             function animate() {
                     requestAnimationFrame(animate);
