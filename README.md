@@ -1,6 +1,6 @@
 # Hero Me 3D Printer Cooling System Part Picker and Assembler
 
-This project is a specialized tool designed for the Hero Me 3D printer cooling system. It allows users to quickly and easily find and assemble the parts they need for their setup. The application leverages Three.js for 3D visualization and interaction, making it an intuitive and efficient solution.
+This project is a specialized tool designed for the Hero Me Gen 7 3D printer part cooling system. It allows users to quickly and easily find and assemble the parts they need for their setup. This uses Three.js for 3D visualization and interaction, for quick loading.
 
 ## Features
 
@@ -8,7 +8,6 @@ This project is a specialized tool designed for the Hero Me 3D printer cooling s
 - **Attachment Visualization**: Highlight predefined attachment points on the base model and visualize part placement.
 - **Automatic Alignment**: Automatically aligns and positions parts based on geometric and orientation data.
 - **Part Matching**: Matches hole patterns between the base and selected parts to ensure compatibility.
-- **Local Directory Integration**: Load parts from a predefined directory structure for easy customization.
 
 ## Usage
 
@@ -26,9 +25,9 @@ This project is a specialized tool designed for the Hero Me 3D printer cooling s
 ## Dependencies
 
 This project uses the following libraries:
-- [Three.js](https://threejs.org/): For rendering 3D models and handling interactions.
+- [Three.js](https://threejs.org/): For rendering 3D models and placement.
 - [STLLoader](https://threejs.org/docs/#examples/en/loaders/STLLoader): For loading STL files.
-- [OrbitControls](https://threejs.org/docs/#examples/en/controls/OrbitControls): For intuitive model interaction.
+- [OrbitControls](https://threejs.org/docs/#examples/en/controls/OrbitControls): For model interaction.
 
 ## Additional Requirements
 
