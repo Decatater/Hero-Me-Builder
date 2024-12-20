@@ -1,6 +1,6 @@
 # Hero Me 3D Printer Cooling System Part Picker and Assembler
 
-This project is a specialized tool designed for the Hero Me Gen 7 3D printer part cooling system. It allows users to quickly and easily find and assemble the parts they need for their setup. This uses Three.js for 3D visualization and interaction, for quick loading.
+This project is a specialized tool designed for the Hero Me Gen 7 3D printer part cooling system. It allows users to quickly and easily find and assemble the parts they need for their setup. This uses Three.js for 3D visualization and interaction, for quick loading. This is the source code, you can find the public use site at [Dekatater.com](https://dekatater.com/tools/HeroMeBuilder.html).
 
 ## Features
 
@@ -13,9 +13,11 @@ This project is a specialized tool designed for the Hero Me Gen 7 3D printer par
 
 1. Clone or download the repository.
 2. Start a local server by running `server.py`:
+
    ```bash
    python server.py
    ```
+
 3. Open your browser and navigate to http://localhost:8000/rebuilder.html.
 4. Use the following functionalities:
     - **Attachment Points**: Hover over points on the base model to highlight them, and click to display dropdown menus for part selection.
