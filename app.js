@@ -896,24 +896,24 @@ async function attachModelAtPoint(modelPath) {
                         mesh.quaternion.premultiply(flipQuat);
                     }
                 } else if (selectedPoint.userData.attachmentType === 'fanguard') {
-                    // First align mounting faces and holes
-                    const normalQuat = new THREE.Quaternion();
-                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());  // Added back .negate()
-                    mesh.quaternion.copy(normalQuat);
+                    // First align orientation faces to point up
+                    const orientQuat = new THREE.Quaternion();
+                    orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
+                    mesh.quaternion.copy(orientQuat);
                 
-                    // Rotate orientation face to point upward
-                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                    if (rotatedOrientation.y < 0) {
+                    // Then align the mounting faces/holes - mirrored
+                    const rotatedAttachNormal = attachNormal.clone().applyQuaternion(orientQuat);
+                    const normalQuat = new THREE.Quaternion();
+                    normalQuat.setFromUnitVectors(rotatedAttachNormal, baseNormal.clone().negate());
+                    mesh.quaternion.premultiply(normalQuat);
+                
+                    // Check if orientation is pointing down after all rotations
+                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                    if (finalOrientation.y < 0) {
+                        // Add 180° rotation around base normal to flip it up
                         const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                         mesh.quaternion.premultiply(flipQuat);
                     }
-                
-                    // Additional rotation to ensure vertical alignment if needed
-                    const upVector = new THREE.Vector3(0, 1, 0);
-                    const currentUp = upVector.clone().applyQuaternion(mesh.quaternion);
-                    const alignmentQuat = new THREE.Quaternion();
-                    alignmentQuat.setFromUnitVectors(currentUp, upVector);
-                    mesh.quaternion.premultiply(alignmentQuat);
                 } else {
                     // Original alignment logic for other parts
                     const orientQuat = new THREE.Quaternion();
