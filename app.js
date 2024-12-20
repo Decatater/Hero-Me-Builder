@@ -914,6 +914,19 @@ async function attachModelAtPoint(modelPath) {
                         const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                         mesh.quaternion.premultiply(flipQuat);
                     }
+                } else if (selectedPoint.userData.attachmentType === 'skirt') {
+                    // First do the normal alignment that was working for the mounting holes
+                    const normalQuat = new THREE.Quaternion();
+                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                    mesh.quaternion.copy(normalQuat);
+                
+                    // Check if orientation is pointing down after alignment
+                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                    if (finalOrientation.y < 0) {
+                        // Add 180° rotation around base normal to flip it up
+                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                        mesh.quaternion.premultiply(flipQuat);
+                    }
                 } else {
                     // Original alignment logic for other parts
                     const orientQuat = new THREE.Quaternion();
