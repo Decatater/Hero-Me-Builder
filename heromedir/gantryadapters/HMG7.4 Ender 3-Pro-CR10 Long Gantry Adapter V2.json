@@ -24,7 +24,7 @@
         },
         {
           "id": 2,
-          "diameter": 3.41,
+          "diameter": 3.4,
           "position": {
             "x": 13.09,
             "y": -7.76,
@@ -55,7 +55,7 @@
           "diameter": 3.4,
           "position": {
             "x": 0.69,
-            "y": -7.76,
+            "y": -7.75,
             "z": 2.5
           },
           "rotation": {
@@ -69,7 +69,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 32.01,
+          "distance": 32,
           "axis": "Y"
         },
         {
@@ -116,10 +116,10 @@
         },
         {
           "id": 2,
-          "diameter": 4.42,
+          "diameter": 4.4,
           "position": {
-            "x": 6.27,
-            "y": 26.91,
+            "x": 6.15,
+            "y": 26.73,
             "z": -2.5
           },
           "rotation": {
@@ -129,14 +129,7 @@
           }
         }
       ],
-      "alignedDistances": [
-        {
-          "from": 1,
-          "to": 2,
-          "distance": 14.84,
-          "axis": "X"
-        }
-      ]
+      "alignedDistances": []
     }
   ],
   "orientationFace": {
@@ -152,5 +145,5 @@
     }
   },
   "totalHoles": 6,
-  "timestamp": "2024-12-21T04:02:57.338Z"
+  "timestamp": "2024-12-21T16:42:31.866Z"
 }

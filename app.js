@@ -82,7 +82,7 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     let maxScore = 0;
     let bestTransform = null;
 
-    // For gantry adapters, filter to only consider 4-hole faces
+    // For gantries, prioritize 4-hole faces
     const facesToCheck = attachmentType === 'gantry' 
         ? attachmentFaces.filter(face => face.holes.length === 4)
         : attachmentFaces;
@@ -168,39 +168,59 @@ function compareHolePatterns(face1, face2) {
         return 0;
     }
 
-    // Instead of requiring exact match, find if smaller set is subset of larger
-    const smallerSet = face1.holes.length <= face2.holes.length ? face1 : face2;
-    const largerSet = face1.holes.length <= face2.holes.length ? face2 : face1;
+    // If number of holes doesn't match, patterns can't match
+    if (face1.holes.length !== face2.holes.length) {
+        console.log('Different number of holes:', face1.holes.length, 'vs', face2.holes.length);
+        return 0;
+    }
 
-    // Calculate distances for smaller set
-    const smallerDistances = calculateInterHoleDistances(smallerSet.holes);
+    // Calculate all inter-hole distances for both faces
+    const distances1 = calculateInterHoleDistances(face1.holes);
+    const distances2 = calculateInterHoleDistances(face2.holes);
 
-    // Try to find matching subset in larger set
-    for (let i = 0; i < largerSet.holes.length - smallerSet.holes.length + 1; i++) {
-        // Take a subset of holes equal to size of smaller set
-        const subset = largerSet.holes.slice(i, i + smallerSet.holes.length);
-        const subsetDistances = calculateInterHoleDistances(subset);
+    console.log('Distances in pattern 1:', distances1);
+    console.log('Distances in pattern 2:', distances2);
 
-        // Compare distances with tolerance
-        const tolerance = 1.0;
-        let matchCount = 0;
+    if (distances1.length !== distances2.length) {
+        console.log('Different number of inter-hole distances');
+        return 0;
+    }
 
-        for (let j = 0; j < smallerDistances.length; j++) {
-            const diff = Math.abs(smallerDistances[j] - subsetDistances[j]);
+    // Try normal comparison first
+    let bestMatchCount = 0;
+
+    // First try original order
+    const tolerance = 1.0;
+    let matchCount = 0;
+    for (let i = 0; i < distances1.length; i++) {
+        const diff = Math.abs(distances1[i] - distances2[i]);
+        console.log(`Distance comparison ${i}: ${distances1[i]} vs ${distances2[i]}, diff: ${diff}`);
+        if (diff <= tolerance) {
+            matchCount++;
+        }
+    }
+    bestMatchCount = matchCount;
+
+    // Then try rotating/swapping groups of distances
+    // For a rectangular pattern, distances will come in pairs
+    if (distances1.length === 4) { // For 4-hole rectangular patterns
+        const rotatedDistances2 = [distances2[2], distances2[3], distances2[0], distances2[1]];
+        matchCount = 0;
+        for (let i = 0; i < distances1.length; i++) {
+            const diff = Math.abs(distances1[i] - rotatedDistances2[i]);
+            console.log(`Rotated comparison ${i}: ${distances1[i]} vs ${rotatedDistances2[i]}, diff: ${diff}`);
             if (diff <= tolerance) {
                 matchCount++;
             }
         }
-
-        const score = matchCount / smallerDistances.length;
-        if (score > 0.6) {  // Using same threshold
-            console.log(`Found matching subset with score: ${score}`);
-            return score;
+        if (matchCount > bestMatchCount) {
+            bestMatchCount = matchCount;
         }
     }
 
-    console.log('No matching subset found');
-    return 0;
+    const score = bestMatchCount / distances1.length;
+    console.log(`Best match score based on distances: ${score} (${bestMatchCount}/${distances1.length} matches)`);
+    return score;
 }
 function calculateInterHoleDistances(holes) {
     const distances = [];
@@ -950,27 +970,26 @@ async function attachModelAtPoint(modelPath) {
                         mesh.quaternion.premultiply(flipQuat);
                     }
                 } else if (selectedPoint.userData.attachmentType === 'gantry') {
-                    // Use wing-style alignment for gantry
+                    // First align the mounting faces
                     const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                     mesh.quaternion.copy(normalQuat);
-
-                    const rightVec = new THREE.Vector3(1, 0, 0);
-                    const upVec = new THREE.Vector3(0, 1, 0);
-
-                    const rotatedUp = upVec.clone().applyQuaternion(mesh.quaternion);
-                    const rotatedRight = rightVec.clone().applyQuaternion(mesh.quaternion);
-
-                    const correctionQuat = new THREE.Quaternion().setFromUnitVectors(
-                        rotatedRight,
-                        rightVec
-                    );
-                    mesh.quaternion.premultiply(correctionQuat);
-
-                    // Check if orientation needs to be flipped
-                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                    if (finalOrientation.y < 0) {
-                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                        mesh.quaternion.premultiply(flipQuat);
+                
+                    // After face alignment, check which axis is most "up"
+                    const worldUp = new THREE.Vector3(0, 1, 0);
+                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                    
+                    // Calculate which 90-degree rotation will get us closest to Y-up
+                    const dotX = Math.abs(rotatedOrientation.x);
+                    const dotY = Math.abs(rotatedOrientation.y);
+                    const dotZ = Math.abs(rotatedOrientation.z);
+                    
+                    if (dotX > dotY && dotX > dotZ) {
+                        // X is most vertical, rotate -90 or 90 around Z
+                        const rotQuat = new THREE.Quaternion().setFromAxisAngle(
+                            baseNormal,
+                            rotatedOrientation.x > 0 ? -Math.PI/2 : Math.PI/2
+                        );
+                        mesh.quaternion.premultiply(rotQuat);
                     }
                 } else {
                     // Original alignment logic for other parts
@@ -991,7 +1010,7 @@ async function attachModelAtPoint(modelPath) {
                 const offset = baseCenter.clone().sub(transformedAttachCenter);
                 
                 // Add offset to prevent intersection
-                const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? 5 : 2;
+                const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? -2 : 0;
                 const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
                 mesh.position.copy(offset.add(normalOffset));
             }
