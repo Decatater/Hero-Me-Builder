@@ -76,13 +76,18 @@ async function loadGeometryData(modelPath) {
 }
 
 // Function to find matching hole patterns between two faces
-function findMatchingFaces(baseFace, attachmentFaces) {
+function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     console.log('Finding matches between faces');
     let bestMatch = null;
     let maxScore = 0;
     let bestTransform = null;
 
-    for (const attachFace of attachmentFaces) {
+    // For gantry adapters, filter to only consider 4-hole faces
+    const facesToCheck = attachmentType === 'gantry' 
+        ? attachmentFaces.filter(face => face.holes.length === 4)
+        : attachmentFaces;
+
+    for (const attachFace of facesToCheck) {
         // Try different rotation combinations
         const rotations = [
             { x: 0, y: 0, z: 0 },
@@ -163,40 +168,39 @@ function compareHolePatterns(face1, face2) {
         return 0;
     }
 
-    // If number of holes doesn't match, patterns can't match
-    if (face1.holes.length !== face2.holes.length) {
-        console.log('Different number of holes:', face1.holes.length, 'vs', face2.holes.length);
-        return 0;
-    }
+    // Instead of requiring exact match, find if smaller set is subset of larger
+    const smallerSet = face1.holes.length <= face2.holes.length ? face1 : face2;
+    const largerSet = face1.holes.length <= face2.holes.length ? face2 : face1;
 
-    // Calculate all inter-hole distances for both faces
-    const distances1 = calculateInterHoleDistances(face1.holes);
-    const distances2 = calculateInterHoleDistances(face2.holes);
+    // Calculate distances for smaller set
+    const smallerDistances = calculateInterHoleDistances(smallerSet.holes);
 
-    console.log('Distances in pattern 1:', distances1);
-    console.log('Distances in pattern 2:', distances2);
+    // Try to find matching subset in larger set
+    for (let i = 0; i < largerSet.holes.length - smallerSet.holes.length + 1; i++) {
+        // Take a subset of holes equal to size of smaller set
+        const subset = largerSet.holes.slice(i, i + smallerSet.holes.length);
+        const subsetDistances = calculateInterHoleDistances(subset);
 
-    if (distances1.length !== distances2.length) {
-        console.log('Different number of inter-hole distances');
-        return 0;
-    }
+        // Compare distances with tolerance
+        const tolerance = 1.0;
+        let matchCount = 0;
 
-    // Compare distances with tolerance
-    const tolerance = 1.0; // 1mm tolerance
-    let matchCount = 0;
+        for (let j = 0; j < smallerDistances.length; j++) {
+            const diff = Math.abs(smallerDistances[j] - subsetDistances[j]);
+            if (diff <= tolerance) {
+                matchCount++;
+            }
+        }
 
-    for (let i = 0; i < distances1.length; i++) {
-        const diff = Math.abs(distances1[i] - distances2[i]);
-        console.log(`Distance comparison ${i}: ${distances1[i]} vs ${distances2[i]}, diff: ${diff}`);
-
-        if (diff <= tolerance) {
-            matchCount++;
+        const score = matchCount / smallerDistances.length;
+        if (score > 0.6) {  // Using same threshold
+            console.log(`Found matching subset with score: ${score}`);
+            return score;
         }
     }
 
-    const score = matchCount / distances1.length;
-    console.log(`Match score based on distances: ${score} (${matchCount}/${distances1.length} matches)`);
-    return score;
+    console.log('No matching subset found');
+    return 0;
 }
 function calculateInterHoleDistances(holes) {
     const distances = [];
@@ -827,20 +831,38 @@ async function attachModelAtPoint(modelPath) {
         let closestFace = null;
         let minDistance = Infinity;
 
-        for (const face of baseGeometryData.faces) {
-            if (face.holes && face.holes.length > 0) {
-                const center = calculateHolePatternCenter(face.holes);
-                const distance = localPoint.distanceTo(
-                    new THREE.Vector3(center.x, center.y, center.z)
-                );
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestFace = face;
+        // Modified face selection logic for gantry adapters
+        if (selectedPoint.userData.attachmentType === 'gantry') {
+            // For gantry, first find faces with 4 holes
+            for (const face of baseGeometryData.faces) {
+                if (face.holes && face.holes.length === 4) {
+                    const center = calculateHolePatternCenter(face.holes);
+                    const distance = localPoint.distanceTo(
+                        new THREE.Vector3(center.x, center.y, center.z)
+                    );
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestFace = face;
+                    }
+                }
+            }
+        } else {
+            // Original face selection for other types
+            for (const face of baseGeometryData.faces) {
+                if (face.holes && face.holes.length > 0) {
+                    const center = calculateHolePatternCenter(face.holes);
+                    const distance = localPoint.distanceTo(
+                        new THREE.Vector3(center.x, center.y, center.z)
+                    );
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestFace = face;
+                    }
                 }
             }
         }
 
-        const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces);
+        const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
 
         if (!matchingFace) {
             console.error('No matching face pattern found');
@@ -924,6 +946,29 @@ async function attachModelAtPoint(modelPath) {
                     const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
                     if (finalOrientation.y < 0) {
                         // Add 180° rotation around base normal to flip it up
+                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                        mesh.quaternion.premultiply(flipQuat);
+                    }
+                } else if (selectedPoint.userData.attachmentType === 'gantry') {
+                    // Use wing-style alignment for gantry
+                    const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                    mesh.quaternion.copy(normalQuat);
+
+                    const rightVec = new THREE.Vector3(1, 0, 0);
+                    const upVec = new THREE.Vector3(0, 1, 0);
+
+                    const rotatedUp = upVec.clone().applyQuaternion(mesh.quaternion);
+                    const rotatedRight = rightVec.clone().applyQuaternion(mesh.quaternion);
+
+                    const correctionQuat = new THREE.Quaternion().setFromUnitVectors(
+                        rotatedRight,
+                        rightVec
+                    );
+                    mesh.quaternion.premultiply(correctionQuat);
+
+                    // Check if orientation needs to be flipped
+                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                    if (finalOrientation.y < 0) {
                         const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                         mesh.quaternion.premultiply(flipQuat);
                     }

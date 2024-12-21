@@ -1,0 +1,110 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 3.4,
+          "position": {
+            "x": 19.78,
+            "y": -1.33,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 3.4,
+          "position": {
+            "x": 19.78,
+            "y": -13.73,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 3,
+          "diameter": 3.4,
+          "position": {
+            "x": -12.22,
+            "y": -1.32,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 4,
+          "diameter": 3.4,
+          "position": {
+            "x": -12.22,
+            "y": -13.73,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 12.4,
+          "axis": "Y"
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "distance": 32,
+          "axis": "X"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "distance": 32,
+          "axis": "X"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "distance": 12.4,
+          "axis": "Y"
+        }
+      ]
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 1,
+      "z": 0
+    },
+    "rotation": {
+      "x": -90,
+      "y": 0,
+      "z": -180
+    }
+  },
+  "totalHoles": 4,
+  "timestamp": "2024-12-21T03:51:15.944Z"
+}
