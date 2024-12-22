@@ -3,31 +3,34 @@ let selectedPoint = null;
 let attachmentPoints = [];
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-
+// State management for menu navigation
+let currentMenuPath = [];
+let menuState = new Map();
+// First update the categoryMenus object with simplified paths
 const categoryMenus = {
     hotend: {
         title: "Hotend Mounts",
-        folder: "heromedir/hotendmounts/Hotends"
+        paths: ["heromedir/hotendmounts/Hotends"]
     },
     skirt: {
         title: "Skirts",
-        folder: "heromedir/hotendmounts/Skirts"
+        paths: ["heromedir/hotendmounts/Skirts"]
     },
     fanguard: {
         title: "Fan Guards",
-        folder: "heromedir/options/Fan Guards"
+        paths: ["heromedir/options/Fan Guards"]
     },
     partcooling: {
         title: "Part Cooling",
-        folder: "heromedir/partcooling"
+        paths: ["heromedir/partcooling"]
     },
     wing: {
         title: "Wings",
-        folder: "heromedir/ablmounts/BL Touch-CR Touch-Most Probes Wings"
+        paths: ["heromedir/ablmounts/BL Touch-CR Touch-Most Probes Wings"]
     },
     gantry: {
         title: "Gantry Adapter",
-        folder: "heromedir/gantryadapters"
+        paths: ["heromedir/gantryadapters"]
     }
 };
 
@@ -221,6 +224,10 @@ function compareHolePatterns(face1, face2) {
     const score = bestMatchCount / distances1.length;
     console.log(`Best match score based on distances: ${score} (${bestMatchCount}/${distances1.length} matches)`);
     return score;
+}
+// Function to normalize paths for comparison
+function normalizePath(path) {
+    return path.toLowerCase().replace(/[\\\/]+/g, '/').trim();
 }
 function calculateInterHoleDistances(holes) {
     const distances = [];
@@ -548,6 +555,30 @@ function findClosestFace(faces, point) {
 
     return closestFace;
 }
+// Function to find directory by path in structure
+function findDirectoryByPath(path, structure) {
+    const normalizedSearchPath = normalizePath(path);
+    
+    function search(items) {
+        if (!items) return null;
+        
+        for (const item of items) {
+            const normalizedItemPath = normalizePath(item.path);
+            
+            if (item.type === 'directory') {
+                if (normalizedItemPath === normalizedSearchPath) {
+                    return item.children;
+                }
+                
+                const found = search(item.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+    
+    return search(structure);
+}
 
 async function getFileList(targetFolder) {
     try {
@@ -598,9 +629,94 @@ async function getFileList(targetFolder) {
         return [];
     }
 }
+// Function to create a safe id for folders
+function createFolderId(path) {
+    return btoa(path).replace(/[=\/+]/g, '');
+}
+// Function to update menu content based on current path
 
+function updateMenuContent(menuElement) {
+    const current = currentMenuPath[currentMenuPath.length - 1];
+    if (!current || !current.folder) return;
+    
+    let html = `
+        <div class="menu-container">
+            <div class="menu-header">
+                ${currentMenuPath.length > 1 ? 
+                    `<button class="back-button" onclick="navigateBack()">
+                        <span class="back-arrow"></span>
+                        <span>Back</span>
+                     </button>` : 
+                    `<div class="menu-title">${current.title}</div>`}
+            </div>
+            <div class="menu-content">`;
+    
+    // Add directories first
+    const directories = current.folder.filter(item => item.type === 'directory');
+    directories.forEach(dir => {
+        const fullPath = `${current.basePath}/${dir.name}`.replace(/^\/+/, '');
+        const folderId = createFolderId(fullPath);
+        
+        menuState.set(folderId, {
+            folder: dir.children,
+            basePath: fullPath,
+            title: dir.name
+        });
+        
+        html += `
+            <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
+                <span class="folder-icon"></span>
+                ${dir.name}
+            </div>`;
+    });
+    
+    // Then add STL files
+    const files = current.folder.filter(item => 
+        item.type === 'file' && 
+        item.name.toLowerCase().endsWith('.stl')
+    );
+    files.forEach(file => {
+        const fullPath = `${current.basePath}/${file.name}`.replace(/^\/+/, '');
+        html += `
+            <div class="menu-item file" onclick="event.stopPropagation(); attachModelAtPoint('${fullPath}')">
+                <span class="file-icon"></span>
+                <span class="file-name">${file.name.replace('.stl', '')}</span>
+            </div>`;
+    });
+    
+    html += `
+            </div>
+        </div>`;
+    
+    menuElement.innerHTML = html;
+}
+function hideMenu() {
+    document.getElementById('modelSelect').style.display = 'none';
+    selectedPoint = null;
+}
+// Function to navigate to a folder
+// Updated navigation functions
+function navigateToFolder(folderId) {
+    const folderData = menuState.get(folderId);
+    if (!folderData) {
+        console.error('No folder data found for ID:', folderId);
+        return;
+    }
+    
+    currentMenuPath.push(folderData);
+    const menuElement = document.getElementById('modelSelect');
+    updateMenuContent(menuElement);
+    menuElement.style.display = 'block'; // Ensure menu stays visible
+}
 
-
+function navigateBack() {
+    if (currentMenuPath.length > 1) {
+        currentMenuPath.pop();
+        const menuElement = document.getElementById('modelSelect');
+        updateMenuContent(menuElement);
+        menuElement.style.display = 'block'; // Ensure menu stays visible
+    }
+}
 function createAttachmentPoints(object) {
     // Scale down the offset and sphere size to match model scale
     const offset = 25.0;  // Reduced from 250.0
@@ -688,27 +804,34 @@ function getFilesFromCache(targetFolder) {
     return results;
 }
 async function createDropdownForType(type) {
-    console.log('Creating dropdown for type:', type);
+    console.log('Creating menu for type:', type);
+    
+    menuState.clear();
     const menu = categoryMenus[type];
-    if (!menu) {
-        console.warn('No menu found for type:', type);
-        return '';
+    if (!menu) return '';
+    
+    let directory = null;
+    let matchedPath = null;
+    
+    for (const path of menu.paths) {
+        directory = findDirectoryByPath(path, directoryStructure);
+        if (directory) {
+            matchedPath = path;
+            break;
+        }
     }
-
-    const files = getFilesFromCache(menu.folder);
-    console.log('Files for dropdown:', files);
-
-    let html = `<select class="dropdown" onclick="event.stopPropagation();" onchange="attachModelAtPoint(this.value)">
-            <option value="">${menu.title}...</option>`;
-
-    files.forEach(file => {
-        const fullPath = `${menu.folder}/${file}`;
-        html += `<option value="${fullPath}">${file.replace('.stl', '')}</option>`;
-    });
-
-    html += '</select>';
-    console.log('Generated HTML:', html);
-    return html;
+    
+    if (!directory) return '';
+    
+    currentMenuPath = [{
+        folder: directory,
+        basePath: matchedPath,
+        title: menu.title
+    }];
+    
+    const menuElement = document.createElement('div');
+    updateMenuContent(menuElement);
+    return menuElement.innerHTML;
 }
 
 function onMouseMove(event) {
@@ -731,21 +854,52 @@ function onMouseMove(event) {
 }
 
 async function onMouseClick(event) {
-    if (!event.target.closest('#modelSelect')) {
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(attachmentPoints, true);
-
-        if (intersects.length > 0) {
-            selectedPoint = intersects[0].object;
-            const modelSelect = document.getElementById('modelSelect');
-            modelSelect.innerHTML = await createDropdownForType(selectedPoint.userData.attachmentType);
-            modelSelect.style.display = 'block';
-            modelSelect.style.left = event.clientX + 'px';
-            modelSelect.style.top = event.clientY + 'px';
-        } else {
-            selectedPoint = null;
-            document.getElementById('modelSelect').style.display = 'none';
+    // If clicking inside the menu, handle menu-specific logic
+    const menuElement = document.getElementById('modelSelect');
+    if (event.target.closest('#modelSelect')) {
+        // Only prevent default for menu items
+        if (event.target.closest('.menu-item') || event.target.closest('.back-button')) {
+            event.preventDefault();
+            event.stopPropagation();
         }
+        return;
+    }
+
+    // Check for attachment point clicks
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(attachmentPoints, true);
+
+    if (intersects.length > 0) {
+        selectedPoint = intersects[0].object;
+        menuElement.innerHTML = await createDropdownForType(selectedPoint.userData.attachmentType);
+        menuElement.style.display = 'block';
+        
+        // Position menu near cursor with smart viewport positioning
+        const menuWidth = 300;  // Approximate menu width
+        const menuHeight = Math.min(400, window.innerHeight * 0.8);  // Max menu height
+        
+        // Calculate available space in different directions
+        const spaceRight = window.innerWidth - event.clientX;
+        const spaceBottom = window.innerHeight - event.clientY;
+        
+        // Determine x position
+        let x = event.clientX;
+        if (spaceRight < menuWidth) {
+            x = Math.max(0, window.innerWidth - menuWidth); // Align to right edge with padding
+        }
+        
+        // Determine y position
+        let y = event.clientY;
+        if (spaceBottom < menuHeight) {
+            y = Math.max(0, window.innerHeight - menuHeight); // Align to bottom edge
+        }
+        
+        menuElement.style.left = x + 'px';
+        menuElement.style.top = y + 'px';
+    } else if (!event.target.closest('#modelSelect')) {
+        // Only hide menu if clicking outside both attachment points and menu
+        selectedPoint = null;
+        menuElement.style.display = 'none';
     }
 }
 function alignMountType(mesh, attachmentType, baseNormal, baseVec, attachNormal, attachVec) {
