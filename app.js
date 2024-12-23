@@ -89,7 +89,9 @@ async function loadGeometryData(modelPath) {
                 }]
             };
         }
-        return await response.json();
+        const data = await response.json();
+        console.log('Loaded JSON data:', data);
+        return data;
     } catch (error) {
         console.log(`Error loading geometry data for ${modelPath}, using default pattern:`, error);
         // Return same default pattern if there's an error
@@ -515,6 +517,83 @@ function visualizeHoles(geometryData, parentMesh) {
         console.log('-------------------');
     });
 }
+function visualizeSlideFaces(geometryData, parentMesh) {
+    if (!geometryData.slideFaces || !Array.isArray(geometryData.slideFaces)) {
+        console.log('No slide faces found in geometry data');
+        return;
+    }
+
+    const slideMaterial = new THREE.MeshPhongMaterial({
+        color: 0xff4400,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+        emissive: 0x331100,
+        emissiveIntensity: 0.3
+    });
+
+    geometryData.slideFaces.forEach((group, groupIndex) => {
+        console.log(`Processing slide face group ${groupIndex + 1}`);
+
+        group.faces.forEach((face, faceIndex) => {
+            console.log(`Face ${faceIndex} dimensions:`, face.dimensions);
+            console.log(`Face ${faceIndex} position:`, face.position);
+            console.log(`Face ${faceIndex} rotation:`, face.rotation);
+
+            const planeGeometry = new THREE.PlaneGeometry(
+                face.dimensions.width,
+                face.dimensions.height
+            );
+
+            // Center the geometry on its origin point
+            planeGeometry.translate(
+                face.dimensions.center2D.x,
+                face.dimensions.center2D.y,
+                0
+            );
+
+            const slideMesh = new THREE.Mesh(planeGeometry, slideMaterial.clone());
+
+            // Position the face
+            slideMesh.position.set(
+                face.position.x,
+                face.position.y,
+                face.position.z
+            );
+            // Create a small offset vector based on the face normal
+            const offsetDistance = 0.1; // 0.1mm offset
+            const normalVector = new THREE.Vector3(
+                face.normal.x,
+                face.normal.y,
+                face.normal.z
+            ).normalize();
+            slideMesh.position.set(
+                face.position.x + (normalVector.x * offsetDistance),
+                face.position.y + (normalVector.y * offsetDistance),
+                face.position.z + (normalVector.z * offsetDistance)
+            );
+            // Apply rotation in degrees to radians
+            const euler = new THREE.Euler(
+                face.rotation.x * Math.PI / 180,
+                face.rotation.y * Math.PI / 180,
+                face.rotation.z * Math.PI / 180,
+                'XYZ'
+            );
+            slideMesh.setRotationFromEuler(euler);
+
+            // Store metadata
+            slideMesh.userData.slideGroup = groupIndex;
+            slideMesh.userData.faceIndex = faceIndex;
+            slideMesh.userData.dimensions = face.dimensions;
+
+            parentMesh.add(slideMesh);
+
+            console.log(`Added slide face ${faceIndex} to group ${groupIndex}`);
+            console.log('Final mesh position:', slideMesh.position);
+            console.log('Final mesh rotation:', slideMesh.rotation);
+        });
+    });
+}
 function loadModel() {
     const loader = new THREE.STLLoader();
     loader.load('heromedir/base/UniversalBase.stl',
@@ -549,6 +628,7 @@ function loadModel() {
             const geometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
             if (geometryData) {
                 visualizeHoles(geometryData, mainModel);
+                visualizeSlideFaces(geometryData, mainModel);
             }
 
             // Adjust camera based on actual model size
