@@ -22,11 +22,42 @@ const categoryMenus = {
     },
     partcooling: {
         title: "Part Cooling",
-        paths: ["heromedir/partcooling"]
+        paths: ["heromedir/partcooling"],
+        filter: (item, userData) => {
+            const name = item.name.toLowerCase();
+            const isRightSide = userData?.attachmentName?.includes('opposite');
+            if (item.type === 'file' && name.endsWith('.stl')) {
+                if (isRightSide) {
+                    return name.includes('right');
+                } else {
+                    return name.includes('left');
+                }
+            }
+            return true; // Show all folders
+        }
     },
     wing: {
         title: "Wings",
-        paths: ["heromedir/ablmounts/BL Touch-CR Touch-Most Probes Wings"]
+        paths: ["heromedir/ablmounts"],
+        filter: (item, userData) => {
+            const name = item.name.toLowerCase();
+            const excludedTerms = ['mount', 'spacer'];
+            const isRightSide = userData?.attachmentName?.includes('opposite');
+            
+            if (item.type === 'file') {
+                if (!name.endsWith('.stl') || excludedTerms.some(term => name.includes(term))) {
+                    return false;
+                }
+                // Filter by side for STL files
+                if (isRightSide) {
+                    return name.includes('right');
+                } else {
+                    return name.includes('left');
+                }
+            }
+            // For directories, just filter out excluded terms
+            return !excludedTerms.some(term => name.includes(term));
+        }
     },
     gantry: {
         title: "Gantry Adapter",
@@ -874,22 +905,31 @@ async function createDropdownForType(type) {
     const menu = categoryMenus[type];
     if (!menu) return '';
     
-    let directory = null;
-    let matchedPath = null;
+    // Recursive function to filter directory contents
+    const filterContents = (directory, userData) => {
+        if (!directory) return [];
+        
+        return directory.map(item => {
+            if (item.type === 'directory' && item.children) {
+                return {
+                    ...item,
+                    children: filterContents(item.children, userData)
+                };
+            }
+            return item;
+        }).filter(item => menu.filter ? menu.filter(item, userData) : true);
+    };
     
-    for (const path of menu.paths) {
-        directory = findDirectoryByPath(path, directoryStructure);
-        if (directory) {
-            matchedPath = path;
-            break;
-        }
-    }
-    
+    const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
     if (!directory) return '';
     
+    const filteredContents = menu.filter ? 
+        filterContents(directory, selectedPoint?.userData) : 
+        directory;
+    
     currentMenuPath = [{
-        folder: directory,
-        basePath: matchedPath,
+        folder: filteredContents,
+        basePath: menu.paths[0],
         title: menu.title
     }];
     
