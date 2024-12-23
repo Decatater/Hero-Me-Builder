@@ -1,6 +1,7 @@
 let scene, camera, renderer, mainModel, controls;
 let selectedPoint = null;
 let attachmentPoints = [];
+let attachedModels = new Map(); // Map to track which points have models attached
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 // State management for menu navigation
@@ -433,6 +434,7 @@ function init() {
     // Add event listeners
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('click', onMouseClick, false);
+    window.addEventListener('dblclick', onDoubleClick, false);
     window.addEventListener('mousemove', onMouseMove, false);
 
     // Start animation loop
@@ -1149,6 +1151,13 @@ async function attachModelAtPoint(modelPath) {
 
         const loader = new THREE.STLLoader();
         loader.load(modelPath, function(geometry) {
+            // Remove any existing model at this point
+            if (attachedModels.has(selectedPoint)) {
+                const oldModel = attachedModels.get(selectedPoint);
+                mainModel.remove(oldModel);
+                attachedModels.delete(selectedPoint);
+            }
+
             const material = new THREE.MeshPhongMaterial({
                 color: 0xff0000,
                 flatShading: false
@@ -1275,6 +1284,10 @@ async function attachModelAtPoint(modelPath) {
 
             mainModel.add(mesh);
 
+            // Store the new model and hide the attachment point
+            attachedModels.set(selectedPoint, mesh);
+            selectedPoint.visible = false;
+
             // Reset UI
             const dropdown = document.querySelector('.dropdown');
             if (dropdown) dropdown.value = '';
@@ -1306,5 +1319,32 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+// Add double click handler to remove models
+function onDoubleClick(event) {
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Create an array of attached models to check for intersection
+    const attachedModelArray = Array.from(attachedModels.values());
+    const intersects = raycaster.intersectObjects(attachedModelArray, true);
 
+    if (intersects.length > 0) {
+        // Find the top-level mesh that was intersected
+        let targetMesh = intersects[0].object;
+        while (targetMesh.parent && targetMesh.parent !== mainModel) {
+            targetMesh = targetMesh.parent;
+        }
+
+        // Find and show the corresponding attachment point
+        for (let [point, model] of attachedModels) {
+            if (model === targetMesh) {
+                point.visible = true;
+                mainModel.remove(model);
+                attachedModels.delete(point);
+                break;
+            }
+        }
+
+        renderer.render(scene, camera);
+    }
+}
 init();
