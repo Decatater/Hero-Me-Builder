@@ -773,12 +773,12 @@ async function createAttachmentPoints(object) {
             characteristics: { normal: { x: 0, y: 1, z: 0 }, holeCount: 4 }
         },
         {
-            type: 'wing',
+            type: 'partcooling',
             characteristics: { normal: { x: -1, y: 0, z: 0 } },
             createOpposite: true
         },
         {
-            type: 'partcooling',
+            type: 'wing',
             characteristics: { normal: { x: -1, y: 0, z: 0 } },
             createOpposite: true
         }
