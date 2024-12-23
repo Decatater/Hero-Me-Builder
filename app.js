@@ -1182,53 +1182,6 @@ async function attachModelAtPoint(modelPath) {
             attachGeometryData.orientationFace.normal.z
         ).normalize();
 
-        // Find matching faces
-        const attachmentPointWorld = new THREE.Vector3();
-        selectedPoint.getWorldPosition(attachmentPointWorld);
-        const localPoint = attachmentPointWorld.clone()
-            .applyMatrix4(mainModel.matrixWorld.clone().invert());
-
-        let closestFace = null;
-        let minDistance = Infinity;
-
-        // Modified face selection logic for gantry adapters
-        if (selectedPoint.userData.attachmentType === 'gantry') {
-            // For gantry, first find faces with 4 holes
-            for (const face of baseGeometryData.faces) {
-                if (face.holes && face.holes.length === 4) {
-                    const center = calculateHolePatternCenter(face.holes);
-                    const distance = localPoint.distanceTo(
-                        new THREE.Vector3(center.x, center.y, center.z)
-                    );
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestFace = face;
-                    }
-                }
-            }
-        } else {
-            // Original face selection for other types
-            for (const face of baseGeometryData.faces) {
-                if (face.holes && face.holes.length > 0) {
-                    const center = calculateHolePatternCenter(face.holes);
-                    const distance = localPoint.distanceTo(
-                        new THREE.Vector3(center.x, center.y, center.z)
-                    );
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestFace = face;
-                    }
-                }
-            }
-        }
-
-        const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
-
-        if (!matchingFace) {
-            console.error('No matching face pattern found');
-            return;
-        }
-
         const loader = new THREE.STLLoader();
         loader.load(modelPath, function(geometry) {
             // Remove any existing model at this point
@@ -1250,121 +1203,181 @@ async function attachModelAtPoint(modelPath) {
             const center = geometry.boundingBox.getCenter(new THREE.Vector3());
             geometry.translate(-center.x, -center.y, -center.z);
 
-            const baseHoles = closestFace.holes;
-            const attachHoles = matchingFace.holes;
-
-            if (baseHoles.length >= 2 && attachHoles.length >= 2) {
-                // Calculate centers of hole patterns
-                const baseCenter = calculateHolePatternCenter(baseHoles);
-                const attachCenter = calculateHolePatternCenter(attachHoles);
-
-                // Get face normals
-                const baseNormal = new THREE.Vector3(
-                    closestFace.normal.x,
-                    closestFace.normal.y,
-                    closestFace.normal.z
-                );
-                const attachNormal = new THREE.Vector3(
-                    matchingFace.normal.x,
-                    matchingFace.normal.y,
-                    matchingFace.normal.z
-                );
-
-                if (selectedPoint.userData.attachmentType === 'hotend') {
-                    // First align mounting faces and holes
-                    const normalQuat = new THREE.Quaternion();
-                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                    mesh.quaternion.copy(normalQuat);
-
-                    // Check orientation face after hole alignment
-                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
-
-                    // If orientation face isn't pointing up, rotate 180° around base normal
-                    if (rotatedOrientation.y < 0) {
-                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                        mesh.quaternion.premultiply(flipQuat);
-                    }
-                } else if (selectedPoint.userData.attachmentType === 'fanguard') {
-                    // First align orientation faces to point up
+            if (selectedPoint.userData.attachmentType === 'partcooling') {
+                if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
+                    const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
+                    console.log('Attaching to:', isRightSide ? 'right side' : 'left side');
+                    console.log('Selected point data:', selectedPoint.userData);
+                    console.log('Base slide face groups:', baseGeometryData.slideFaces);
+                    
+                    const baseGroup = isRightSide ? baseGeometryData.slideFaces[1] : baseGeometryData.slideFaces[0];
+                    const attachGroup = attachGeometryData.slideFaces[0];
+            
+                    console.log('Using base group:', baseGroup);
+                    console.log('Using attach group:', attachGroup);
+                    // Get orientation face pointing up and slide faces parallel
+                    const upVector = new THREE.Vector3(0, 1, 0);
                     const orientQuat = new THREE.Quaternion();
-                    orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
+                    orientQuat.setFromUnitVectors(attachOrientation, upVector);
                     mesh.quaternion.copy(orientQuat);
-                
-                    // Then align the mounting faces/holes - mirrored
-                    const rotatedAttachNormal = attachNormal.clone().applyQuaternion(orientQuat);
-                    const normalQuat = new THREE.Quaternion();
-                    normalQuat.setFromUnitVectors(rotatedAttachNormal, baseNormal.clone().negate());
-                    mesh.quaternion.premultiply(normalQuat);
-                
-                    // Check if orientation is pointing down after all rotations
-                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                    if (finalOrientation.y < 0) {
-                        // Add 180° rotation around base normal to flip it up
-                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                        mesh.quaternion.premultiply(flipQuat);
-                    }
-                } else if (selectedPoint.userData.attachmentType === 'skirt') {
-                    // First do the normal alignment that was working for the mounting holes
-                    const normalQuat = new THREE.Quaternion();
-                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                    mesh.quaternion.copy(normalQuat);
-                
-                    // Check if orientation is pointing down after alignment
-                    const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                    if (finalOrientation.y < 0) {
-                        // Add 180° rotation around base normal to flip it up
-                        const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                        mesh.quaternion.premultiply(flipQuat);
-                    }
-                } else if (selectedPoint.userData.attachmentType === 'gantry') {
-                    // First align the mounting faces
-                    const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                    mesh.quaternion.copy(normalQuat);
-                
-                    // After face alignment, check which axis is most "up"
-                    const worldUp = new THREE.Vector3(0, 1, 0);
-                    const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                    
-                    // Calculate which 90-degree rotation will get us closest to Y-up
-                    const dotX = Math.abs(rotatedOrientation.x);
-                    const dotY = Math.abs(rotatedOrientation.y);
-                    const dotZ = Math.abs(rotatedOrientation.z);
-                    
-                    if (dotX > dotY && dotX > dotZ) {
-                        // X is most vertical, rotate -90 or 90 around Z
-                        const rotQuat = new THREE.Quaternion().setFromAxisAngle(
-                            baseNormal,
-                            rotatedOrientation.x > 0 ? -Math.PI/2 : Math.PI/2
-                        );
-                        mesh.quaternion.premultiply(rotQuat);
+            
+                    // Position based on the slide face distance
+                    const basePos = new THREE.Vector3(
+                        baseGroup.faces[0].position.x,
+                        baseGroup.faces[0].position.y,
+                        baseGroup.faces[0].position.z
+                    );
+            
+                    const attachPos = new THREE.Vector3(
+                        attachGroup.faces[0].position.x,
+                        attachGroup.faces[0].position.y,
+                        attachGroup.faces[0].position.z
+                    ).applyQuaternion(mesh.quaternion);
+            
+                    const offset = basePos.clone().sub(attachPos);
+                    mesh.position.copy(offset);
+            
+                    if (isRightSide) {
+                        mesh.scale.x *= -1;
                     }
                 } else {
-                    // Original alignment logic for other parts
-                    const orientQuat = new THREE.Quaternion();
-                    orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
+                    console.error('Missing slide faces in one or both models');
+                    return;
+                }
+            } else {
+                // Handle other attachment types with hole patterns
+                const attachmentPointWorld = new THREE.Vector3();
+                selectedPoint.getWorldPosition(attachmentPointWorld);
+                const localPoint = attachmentPointWorld.clone()
+                    .applyMatrix4(mainModel.matrixWorld.clone().invert());
 
-                    const normalQuat = new THREE.Quaternion();
-                    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                let closestFace = null;
+                let minDistance = Infinity;
 
-                    const finalQuat = normalQuat.multiply(orientQuat);
-                    mesh.quaternion.copy(finalQuat);
+                // Find appropriate face based on attachment type
+                if (selectedPoint.userData.attachmentType === 'gantry') {
+                    for (const face of baseGeometryData.faces) {
+                        if (face.holes && face.holes.length === 4) {
+                            const center = calculateHolePatternCenter(face.holes);
+                            const distance = localPoint.distanceTo(
+                                new THREE.Vector3(center.x, center.y, center.z)
+                            );
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestFace = face;
+                            }
+                        }
+                    }
+                } else {
+                    for (const face of baseGeometryData.faces) {
+                        if (face.holes && face.holes.length > 0) {
+                            const center = calculateHolePatternCenter(face.holes);
+                            const distance = localPoint.distanceTo(
+                                new THREE.Vector3(center.x, center.y, center.z)
+                            );
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestFace = face;
+                            }
+                        }
+                    }
                 }
 
-                // Transform attachment center by our rotation
-                const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+                const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
+                if (!matchingFace) {
+                    console.error('No matching face pattern found');
+                    return;
+                }
 
-                // Position based on pattern centers
-                const offset = baseCenter.clone().sub(transformedAttachCenter);
-                
-                // Add offset to prevent intersection
-                const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? -2 : 0;
-                const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
-                mesh.position.copy(offset.add(normalOffset));
+                const baseHoles = closestFace.holes;
+                const attachHoles = matchingFace.holes;
+
+                if (baseHoles.length >= 2 && attachHoles.length >= 2) {
+                    const baseCenter = calculateHolePatternCenter(baseHoles);
+                    const attachCenter = calculateHolePatternCenter(attachHoles);
+                    const baseNormal = new THREE.Vector3(
+                        closestFace.normal.x,
+                        closestFace.normal.y,
+                        closestFace.normal.z
+                    );
+                    const attachNormal = new THREE.Vector3(
+                        matchingFace.normal.x,
+                        matchingFace.normal.y,
+                        matchingFace.normal.z
+                    );
+
+                    // Handle specific attachment type alignments
+                    if (selectedPoint.userData.attachmentType === 'hotend') {
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.copy(normalQuat);
+
+                        const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+                        if (rotatedOrientation.y < 0) {
+                            const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            mesh.quaternion.premultiply(flipQuat);
+                        }
+                    } else if (selectedPoint.userData.attachmentType === 'fanguard') {
+                        const orientQuat = new THREE.Quaternion();
+                        orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
+                        mesh.quaternion.copy(orientQuat);
+
+                        const rotatedAttachNormal = attachNormal.clone().applyQuaternion(orientQuat);
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(rotatedAttachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.premultiply(normalQuat);
+
+                        const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                        if (finalOrientation.y < 0) {
+                            const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            mesh.quaternion.premultiply(flipQuat);
+                        }
+                    } else if (selectedPoint.userData.attachmentType === 'skirt') {
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.copy(normalQuat);
+
+                        const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                        if (finalOrientation.y < 0) {
+                            const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            mesh.quaternion.premultiply(flipQuat);
+                        }
+                    } else if (selectedPoint.userData.attachmentType === 'gantry') {
+                        const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.copy(normalQuat);
+
+                        const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                        const dotX = Math.abs(rotatedOrientation.x);
+                        const dotY = Math.abs(rotatedOrientation.y);
+                        const dotZ = Math.abs(rotatedOrientation.z);
+
+                        if (dotX > dotY && dotX > dotZ) {
+                            const rotQuat = new THREE.Quaternion().setFromAxisAngle(
+                                baseNormal,
+                                rotatedOrientation.x > 0 ? -Math.PI/2 : Math.PI/2
+                            );
+                            mesh.quaternion.premultiply(rotQuat);
+                        }
+                    } else {
+                        const orientQuat = new THREE.Quaternion();
+                        orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        const finalQuat = normalQuat.multiply(orientQuat);
+                        mesh.quaternion.copy(finalQuat);
+                    }
+
+                    // Position based on pattern centers
+                    const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+                    const offset = baseCenter.clone().sub(transformedAttachCenter);
+                    const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? -2 : 0;
+                    const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
+                    mesh.position.copy(offset.add(normalOffset));
+                }
             }
 
+            // Add mesh to scene and update state
             mainModel.add(mesh);
-
-            // Store the new model and hide the attachment point
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
 
@@ -1426,5 +1439,79 @@ function onDoubleClick(event) {
 
         renderer.render(scene, camera);
     }
+}
+function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, attachOrientation, isRightSide = false) {
+    console.log('Finding matching slide faces');
+    
+    // First determine if this is a dual-sided duct by counting groups
+    const isDualSided = attachmentFaces.length > 1;
+    console.log(`Attachment is ${isDualSided ? 'dual-sided' : 'single-sided'}`);
+    
+    // Get the appropriate groups based on side
+    let targetBaseGroup = isRightSide ? baseFaces[1] : baseFaces[0];
+    const targetAttachGroup = attachmentFaces[0]; // Always use first group, we'll mirror if needed
+    
+    // Orient both models upward first
+    const upVector = new THREE.Vector3(0, 1, 0);
+    const baseOrientQuat = new THREE.Quaternion().setFromUnitVectors(baseOrientation, upVector);
+    const attachOrientQuat = new THREE.Quaternion().setFromUnitVectors(attachOrientation, upVector);
+
+    const score = compareSlideFaceGroups(targetBaseGroup, targetAttachGroup);
+    console.log('Match score:', score);
+
+    if (score > 0.6) {
+        return {
+            baseGroup: targetBaseGroup,
+            attachGroup: targetAttachGroup,
+            baseOrientQuat,
+            attachOrientQuat,
+            score,
+            isRightSide
+        };
+    }
+    
+    return null;
+}
+
+function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
+    if (!group1.faces || !group2.faces) {
+        console.log('Missing faces in one or both groups');
+        return 0;
+    }
+    
+    if (group1.faces.length !== group2.faces.length) {
+        console.log('Different number of faces:', group1.faces.length, 'vs', group2.faces.length);
+        return 0;
+    }
+
+    // Compare distances between faces
+    if (group1.distances && group2.distances) {
+        // Both groups should have same number of distances
+        if (group1.distances.length !== group2.distances.length) {
+            console.log('Different number of distances');
+            return 0;
+        }
+
+        let distanceScore = 0;
+        const tolerance = 2; // 2mm tolerance
+
+        // Compare each distance
+        group1.distances.forEach(dist1 => {
+            const matchingDist = group2.distances.find(dist2 => 
+                Math.abs(dist1.distance - dist2.distance) < tolerance
+            );
+            if (matchingDist) {
+                distanceScore += 1;
+            }
+            console.log(`Distance comparison: ${dist1.distance} vs ${matchingDist?.distance}`);
+        });
+
+        const score = distanceScore / group1.distances.length;
+        console.log('Distance match score:', score);
+        return score;
+    }
+    
+    console.log('Missing distances in one or both groups');
+    return 0;
 }
 init();
