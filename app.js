@@ -717,10 +717,8 @@ function navigateBack() {
         menuElement.style.display = 'block'; // Ensure menu stays visible
     }
 }
-function createAttachmentPoints(object) {
-    // Scale down the offset and sphere size to match model scale
-    const offset = 25.0;  // Reduced from 250.0
-    const sphereGeometry = new THREE.SphereGeometry(3.0, 32, 32);  // Reduced from 30.0
+async function createAttachmentPoints(object) {
+    const sphereGeometry = new THREE.SphereGeometry(3.0, 32, 32);
     const sphereMaterial = new THREE.MeshPhongMaterial({
         color: 0x800080,
         transparent: true,
@@ -730,30 +728,96 @@ function createAttachmentPoints(object) {
         shininess: 50
     });
 
-    const positions = [
-        { pos: new THREE.Vector3(0, 0, offset), name: 'top', type: 'hotend' },
-        { pos: new THREE.Vector3(0, 0, -offset), name: 'bottom', type: 'skirt' },
-        { pos: new THREE.Vector3(0, -offset, 0), name: 'front', type: 'fanguard' },
-        { pos: new THREE.Vector3(0, offset, 0), name: 'back', type: 'gantry' },
-        { pos: new THREE.Vector3(-offset, 0, -offset / 4), name: 'left_front', type: 'partcooling' },
-        { pos: new THREE.Vector3(-offset, 17.5, -offset / 4), name: 'left_back', type: 'wing' },  // Adjusted from 175
-        { pos: new THREE.Vector3(offset, 0, -offset / 4), name: 'right_front', type: 'partcooling' },
-        { pos: new THREE.Vector3(offset, 17.5, -offset / 4), name: 'right_back', type: 'wing' }   // Adjusted from 175
-    ];
-
     // Remove existing attachment points
     attachmentPoints.forEach(point => object.remove(point));
     attachmentPoints = [];
 
-    // Create new attachment points
-    positions.forEach(({ pos, name, type }) => {
-        const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
-        point.position.copy(pos);
-        point.userData.attachmentType = type;
-        point.userData.attachmentName = name;
-        object.add(point);
-        attachmentPoints.push(point);
-    });
+    // Load geometry data for the base model
+    const geometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
+    if (!geometryData?.faces) return;
+
+    // Keep track of assigned faces to avoid duplicates
+    const assignedFaces = new Set();
+
+    // First, find specific patterns we want to match
+    const findFaceByCharacteristics = (characteristics) => {
+        return geometryData.faces.find(face => {
+            if (assignedFaces.has(face)) return false;
+            return Object.entries(characteristics).every(([key, value]) => {
+                if (key === 'holeCount') return face.holes?.length === value;
+                if (key === 'normal') {
+                    const dot = face.normal.x * value.x + face.normal.y * value.y + face.normal.z * value.z;
+                    return Math.abs(dot - 1) < 0.1; // Allow small deviation
+                }
+                return true;
+            });
+        });
+    };
+
+    // Define the attachment points we need with their characteristics
+    const attachmentDefinitions = [
+        {
+            type: 'hotend',
+            characteristics: { normal: { x: 0, y: 0, z: 1 } }
+        },
+        {
+            type: 'skirt',
+            characteristics: { normal: { x: 0, y: 0, z: -1 } }
+        },
+        {
+            type: 'fanguard',
+            characteristics: { normal: { x: 0, y: -1, z: 0 } }
+        },
+        {
+            type: 'gantry',
+            characteristics: { normal: { x: 0, y: 1, z: 0 }, holeCount: 4 }
+        },
+        {
+            type: 'wing',
+            characteristics: { normal: { x: -1, y: 0, z: 0 } },
+            createOpposite: true
+        },
+        {
+            type: 'partcooling',
+            characteristics: { normal: { x: -1, y: 0, z: 0 } },
+            createOpposite: true
+        }
+    ];
+
+    // Create points based on definitions
+    for (const def of attachmentDefinitions) {
+        const face = findFaceByCharacteristics(def.characteristics);
+        if (!face) continue;
+
+        assignedFaces.add(face);
+        
+        const center = calculateHolePatternCenter(face.holes);
+        const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+        
+        // Create main point
+        const createPoint = (position, normal, suffix = '') => {
+            const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+            position.add(normal.clone().multiplyScalar(5)); // 5mm offset from face
+            
+            point.position.copy(position);
+            point.userData.attachmentType = def.type;
+            point.userData.attachmentName = def.type + suffix;
+            point.userData.normal = normal;
+            object.add(point);
+            attachmentPoints.push(point);
+        };
+
+        createPoint(center.clone(), normal);
+
+        // Create opposite point if needed
+        if (def.createOpposite) {
+            const oppositeCenter = center.clone();
+            oppositeCenter.x *= -1;
+            const oppositeNormal = normal.clone();
+            oppositeNormal.x *= -1;  // Flip the normal for the opposite side
+            createPoint(oppositeCenter, oppositeNormal, '_opposite');
+        }
+    }
 }
 // Load directory structure at startup
 async function loadDirectoryStructure() {
