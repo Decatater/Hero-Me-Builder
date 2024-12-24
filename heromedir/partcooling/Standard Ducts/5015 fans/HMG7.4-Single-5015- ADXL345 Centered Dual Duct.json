@@ -1,0 +1,234 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 4.2,
+          "position": {
+            "x": 6.98,
+            "y": -26.14,
+            "z": 27.13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 4.2,
+          "position": {
+            "x": -7.02,
+            "y": -26.15,
+            "z": 27.13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 14,
+          "axis": "X"
+        }
+      ]
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 1,
+      "z": 0
+    },
+    "rotation": {
+      "x": -90,
+      "y": 0,
+      "z": -90
+    }
+  },
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": 90,
+            "z": 0
+          },
+          "position": {
+            "x": -17.67,
+            "y": -12.2,
+            "z": -17.57
+          },
+          "dimensions": {
+            "width": 16.75,
+            "height": 5.5,
+            "center2D": {
+              "x": 5.375,
+              "y": -0.5
+            },
+            "bounds2D": {
+              "min": {
+                "x": -3,
+                "y": -3.25
+              },
+              "max": {
+                "x": 13.75,
+                "y": 2.25
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": 90,
+            "z": 0
+          },
+          "position": {
+            "x": -17.67,
+            "y": -10.85,
+            "z": -40.97
+          },
+          "dimensions": {
+            "width": 14.25,
+            "height": 6,
+            "center2D": {
+              "x": 5.375,
+              "y": 0.5
+            },
+            "bounds2D": {
+              "min": {
+                "x": -1.75,
+                "y": -2.5
+              },
+              "max": {
+                "x": 12.5,
+                "y": 3.5
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 17.38
+        }
+      ]
+    },
+    {
+      "groupId": 2,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": -90,
+            "z": 0
+          },
+          "position": {
+            "x": 17.63,
+            "y": -12.1,
+            "z": -41.83
+          },
+          "dimensions": {
+            "width": 14.25,
+            "height": 6,
+            "center2D": {
+              "x": -6.625,
+              "y": 1.25
+            },
+            "bounds2D": {
+              "min": {
+                "x": -13.75,
+                "y": -1.75
+              },
+              "max": {
+                "x": 0.5,
+                "y": 4.25
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": -90,
+            "z": 0
+          },
+          "position": {
+            "x": 17.63,
+            "y": -12.27,
+            "z": -19.28
+          },
+          "dimensions": {
+            "width": 17,
+            "height": 5.5,
+            "center2D": {
+              "x": -5.5,
+              "y": 1.25
+            },
+            "bounds2D": {
+              "min": {
+                "x": -14,
+                "y": -1.5
+              },
+              "max": {
+                "x": 3,
+                "y": 4
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 16.46
+        }
+      ]
+    }
+  ],
+  "totalHoles": 2,
+  "timestamp": "2024-12-24T14:46:34.919Z"
+}

@@ -29,9 +29,9 @@ const categoryMenus = {
             const isRightSide = userData?.attachmentName?.includes('opposite');
             if (item.type === 'file' && name.endsWith('.stl')) {
                 if (isRightSide) {
-                    return name.includes('right');
+                    return !name.includes('left');
                 } else {
-                    return name.includes('left');
+                    return !name.includes('right');
                 }
             }
             return true; // Show all folders
@@ -1053,6 +1053,29 @@ async function onMouseClick(event) {
 
     // Check for attachment point clicks
     raycaster.setFromCamera(mouse, camera);
+
+    // Check for arrow controls first
+    const allArrows = [];
+    attachedModels.forEach(model => {
+        if (model.userData.positionControls) {
+            allArrows.push(...model.userData.positionControls);
+        }
+    });
+
+    const arrowIntersects = raycaster.intersectObjects(allArrows);
+    if (arrowIntersects.length > 0) {
+        const arrow = arrowIntersects[0].object;
+        arrow.userData.targetModel.position.z += arrow.userData.moveAmount;
+
+        // Update arrow positions
+        const controls = arrow.userData.targetModel.userData.positionControls;
+        controls.forEach(control => {
+            control.position.z += arrow.userData.moveAmount;
+        });
+        return;
+    }
+
+    // Check for attachment point clicks
     const intersects = raycaster.intersectObjects(attachmentPoints, true);
 
     if (intersects.length > 0) {
@@ -1205,46 +1228,160 @@ async function attachModelAtPoint(modelPath) {
 
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
-                    const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
-                    console.log('Attaching to:', isRightSide ? 'right side' : 'left side');
-                    console.log('Selected point data:', selectedPoint.userData);
-                    console.log('Base slide face groups:', baseGeometryData.slideFaces);
-                    
-                    const baseGroup = isRightSide ? baseGeometryData.slideFaces[1] : baseGeometryData.slideFaces[0];
-                    const attachGroup = attachGeometryData.slideFaces[0];
-            
-                    console.log('Using base group:', baseGroup);
-                    console.log('Using attach group:', attachGroup);
-                    // Get orientation face pointing up and slide faces parallel
-                    const upVector = new THREE.Vector3(0, 1, 0);
-                    const orientQuat = new THREE.Quaternion();
-                    orientQuat.setFromUnitVectors(attachOrientation, upVector);
-                    mesh.quaternion.copy(orientQuat);
-            
-                    // Position based on the slide face distance
-                    const basePos = new THREE.Vector3(
-                        baseGroup.faces[0].position.x,
-                        baseGroup.faces[0].position.y,
-                        baseGroup.faces[0].position.z
-                    );
-            
-                    const attachPos = new THREE.Vector3(
-                        attachGroup.faces[0].position.x,
-                        attachGroup.faces[0].position.y,
-                        attachGroup.faces[0].position.z
-                    ).applyQuaternion(mesh.quaternion);
-            
-                    const offset = basePos.clone().sub(attachPos);
-                    mesh.position.copy(offset);
-            
-                    if (isRightSide) {
-                        mesh.scale.x *= -1;
+                    const isDualDuct = attachGeometryData.slideFaces.length > 1;
+             
+                    if (isDualDuct) {
+                        // Get orientation vectors
+                        const baseOrientation = new THREE.Vector3(
+                            baseGeometryData.orientationFace.normal.x,
+                            baseGeometryData.orientationFace.normal.y, 
+                            baseGeometryData.orientationFace.normal.z
+                        );
+                        const attachOrientation = new THREE.Vector3(
+                            attachGeometryData.orientationFace.normal.x,
+                            attachGeometryData.orientationFace.normal.y,
+                            attachGeometryData.orientationFace.normal.z
+                        );
+             
+                        // First align orientations to sky
+                        const upVector = new THREE.Vector3(0, 0, 1);
+                        const orientQuat = new THREE.Quaternion();
+                        orientQuat.setFromUnitVectors(attachOrientation, upVector);
+                        mesh.quaternion.copy(orientQuat);
+             
+                        // Calculate centers of both base groups
+                        const baseCenterLeft = new THREE.Vector3(
+                            (baseGeometryData.slideFaces[1].faces[0].position.x + baseGeometryData.slideFaces[1].faces[1].position.x) / 2,
+                            (baseGeometryData.slideFaces[1].faces[0].position.y + baseGeometryData.slideFaces[1].faces[1].position.y) / 2,
+                            (baseGeometryData.slideFaces[1].faces[0].position.z + baseGeometryData.slideFaces[1].faces[1].position.z) / 2
+                        );
+                        const baseCenterRight = new THREE.Vector3(
+                            (baseGeometryData.slideFaces[0].faces[0].position.x + baseGeometryData.slideFaces[0].faces[1].position.x) / 2,
+                            (baseGeometryData.slideFaces[0].faces[0].position.y + baseGeometryData.slideFaces[0].faces[1].position.y) / 2,
+                            (baseGeometryData.slideFaces[0].faces[0].position.z + baseGeometryData.slideFaces[0].faces[1].position.z) / 2
+                        );
+                        const baseCenter = new THREE.Vector3().addVectors(baseCenterLeft, baseCenterRight).multiplyScalar(0.5);
+             
+                        // Calculate centers of both attachment groups
+                        const attachCenterLeft = new THREE.Vector3(
+                            (attachGeometryData.slideFaces[0].faces[0].position.x + attachGeometryData.slideFaces[0].faces[1].position.x) / 2,
+                            (attachGeometryData.slideFaces[0].faces[0].position.y + attachGeometryData.slideFaces[0].faces[1].position.y) / 2,
+                            (attachGeometryData.slideFaces[0].faces[0].position.z + attachGeometryData.slideFaces[0].faces[1].position.z) / 2
+                        );
+                        const attachCenterRight = new THREE.Vector3(
+                            (attachGeometryData.slideFaces[1].faces[0].position.x + attachGeometryData.slideFaces[1].faces[1].position.x) / 2,
+                            (attachGeometryData.slideFaces[1].faces[0].position.y + attachGeometryData.slideFaces[1].faces[1].position.y) / 2,
+                            (attachGeometryData.slideFaces[1].faces[0].position.z + attachGeometryData.slideFaces[1].faces[1].position.z) / 2
+                        );
+                        const attachCenter = new THREE.Vector3().addVectors(attachCenterLeft, attachCenterRight).multiplyScalar(0.5);
+             
+                        // Align normals between dual duct faces
+                        const baseNormalLeft = new THREE.Vector3(
+                            baseGeometryData.slideFaces[1].faces[0].normal.x,
+                            baseGeometryData.slideFaces[1].faces[0].normal.y,
+                            baseGeometryData.slideFaces[1].faces[0].normal.z
+                        );
+                        const attachNormalLeft = new THREE.Vector3(
+                            attachGeometryData.slideFaces[0].faces[0].normal.x,
+                            attachGeometryData.slideFaces[0].faces[0].normal.y,
+                            attachGeometryData.slideFaces[0].faces[0].normal.z
+                        ).applyQuaternion(orientQuat);
+             
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormalLeft, baseNormalLeft.clone().negate());
+                        mesh.quaternion.premultiply(normalQuat);
+             
+                        // Position using combined centers
+                        const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+                        const offset = baseCenter.clone().sub(transformedAttachCenter);
+                        mesh.position.copy(offset);
+             
+                    } else {
+                        // Existing single duct logic
+                        const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
+                        const baseGroup = isRightSide ? baseGeometryData.slideFaces[0] : baseGeometryData.slideFaces[1];
+                        const attachGroup = attachGeometryData.slideFaces[0];
+             
+                        // Get orientation vectors
+                        const baseOrientation = new THREE.Vector3(
+                            baseGeometryData.orientationFace.normal.x,
+                            baseGeometryData.orientationFace.normal.y, 
+                            baseGeometryData.orientationFace.normal.z
+                        );
+                        const attachOrientation = new THREE.Vector3(
+                            attachGeometryData.orientationFace.normal.x,
+                            attachGeometryData.orientationFace.normal.y,
+                            attachGeometryData.orientationFace.normal.z
+                        );
+             
+                        // First align orientations to sky
+                        const upVector = new THREE.Vector3(0, 0, 1);
+                        const orientQuat = new THREE.Quaternion();
+                        orientQuat.setFromUnitVectors(attachOrientation, upVector);
+                        mesh.quaternion.copy(orientQuat);
+             
+                        // Then align slide face normals
+                        const baseNormal = new THREE.Vector3(
+                            baseGroup.faces[0].normal.x,
+                            baseGroup.faces[0].normal.y,
+                            baseGroup.faces[0].normal.z
+                        );
+                        const attachNormal = new THREE.Vector3(
+                            attachGroup.faces[0].normal.x,
+                            attachGroup.faces[0].normal.y,
+                            attachGroup.faces[0].normal.z
+                        ).applyQuaternion(orientQuat);
+             
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.premultiply(normalQuat);
+             
+                        // Calculate centers for positioning
+                        const baseCenter = new THREE.Vector3(
+                            baseGroup.faces[0].position.x,
+                            baseGroup.faces[0].position.y,
+                            baseGroup.faces[0].position.z
+                        );
+                        const attachCenter = new THREE.Vector3(
+                            attachGroup.faces[1].position.x,
+                            attachGroup.faces[1].position.y,
+                            attachGroup.faces[1].position.z
+                        );
+
+                        // Position using front face centers instead of midpoint
+                        const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+                        const offset = baseCenter.clone().sub(transformedAttachCenter);
+             
+                        // Check if right side needs 180° rotation
+                        if (isRightSide) {
+                            const baseNormal = new THREE.Vector3(
+                                baseGroup.faces[0].normal.x,
+                                baseGroup.faces[0].normal.y,
+                                baseGroup.faces[0].normal.z
+                            );
+                            const attachNormal = new THREE.Vector3(
+                                attachGroup.faces[0].normal.x,
+                                attachGroup.faces[0].normal.y,
+                                attachGroup.faces[0].normal.z
+                            );
+                            const angle = attachNormal.angleTo(baseNormal);
+                            
+                            if (angle < Math.PI/2) {
+                                const rotationQuat = new THREE.Quaternion().setFromAxisAngle(
+                                    new THREE.Vector3(0, 0, 1), 
+                                    Math.PI
+                                );
+                                mesh.quaternion.premultiply(rotationQuat);
+                            }
+                        }
+                        
+                        mesh.position.copy(offset);
                     }
                 } else {
                     console.error('Missing slide faces in one or both models');
                     return;
                 }
-            } else {
+             } else {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
@@ -1380,7 +1517,12 @@ async function attachModelAtPoint(modelPath) {
             mainModel.add(mesh);
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
-
+            // Add position control arrows (right before UI reset)
+            if (selectedPoint.userData.attachmentType === 'partcooling') {
+                const positionArrows = createPositionArrows(mesh);
+                mesh.userData.positionControls = positionArrows;
+                positionArrows.forEach(arrow => mainModel.add(arrow));
+            }
             // Reset UI
             const dropdown = document.querySelector('.dropdown');
             if (dropdown) dropdown.value = '';
@@ -1514,4 +1656,52 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
     console.log('Missing distances in one or both groups');
     return 0;
 }
+function createPositionArrows(attachedModel) {
+    const arrowGeometry = new THREE.CylinderGeometry(1.5, 0, 6, 12); // Bigger arrows
+    const arrowMaterial = new THREE.MeshPhongMaterial({
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 0.8,
+        emissive: 0x00ff00,
+        emissiveIntensity: 0.5
+    });
+ 
+    const box = new THREE.Box3().setFromObject(attachedModel);
+    const size = box.getSize(new THREE.Vector3());
+    const center = new THREE.Vector3(
+        attachedModel.position.x,
+        attachedModel.position.y,
+        attachedModel.position.z
+    );
+ 
+    const upArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
+    const downArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
+ 
+    // Position 20mm away from model bounds
+    upArrow.position.set(center.x, center.y, center.z + size.z/2 + 20);
+    downArrow.position.set(center.x, center.y, center.z - size.z/2 - 20);
+    
+    // Ensure arrows point up/down regardless of model rotation
+    upArrow.rotation.x = -Math.PI/2;
+    downArrow.rotation.x = Math.PI/2;
+ 
+    upArrow.userData = {
+        type: 'positionControl',
+        direction: 'up',
+        targetModel: attachedModel,
+        moveAmount: 1
+    };
+    downArrow.userData = {
+        type: 'positionControl',
+        direction: 'down',
+        targetModel: attachedModel,
+        moveAmount: -1
+    };
+ 
+    // Make arrows children of the model so they move with it
+    attachedModel.add(upArrow);
+    attachedModel.add(downArrow);
+ 
+    return [upArrow, downArrow];
+ }
 init();
