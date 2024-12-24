@@ -2,6 +2,9 @@ let scene, camera, renderer, mainModel, controls;
 let selectedPoint = null;
 let attachmentPoints = [];
 let attachedModels = new Map(); // Map to track which points have models attached
+let isMovingPart = false;
+let moveInterval = null;
+let selectedArrow = null;
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 // State management for menu navigation
@@ -410,6 +413,13 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
+    // Add event listeners
+    window.addEventListener('resize', onWindowResize, false);
+    window.addEventListener('click', onMouseClick, false);
+    window.addEventListener('dblclick', onDoubleClick, false);
+    window.addEventListener('mousemove', onMouseMove, false);
+    window.addEventListener('mousedown', onMouseDown, false);
+    window.addEventListener('mouseup', onMouseUp, false);
 
     // Setup controls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -433,11 +443,7 @@ function init() {
         loadModel();
     });
 
-    // Add event listeners
-    window.addEventListener('resize', onWindowResize, false);
-    window.addEventListener('click', onMouseClick, false);
-    window.addEventListener('dblclick', onDoubleClick, false);
-    window.addEventListener('mousemove', onMouseMove, false);
+
 
     // Start animation loop
     animate();
@@ -1040,6 +1046,7 @@ function onMouseMove(event) {
 }
 
 async function onMouseClick(event) {
+
     // If clicking inside the menu, handle menu-specific logic
     const menuElement = document.getElementById('modelSelect');
     if (event.target.closest('#modelSelect')) {
@@ -1051,22 +1058,20 @@ async function onMouseClick(event) {
         return;
     }
 
-    // Check for attachment point clicks
+    // Check for attachment point clicks without stopping propagation
     raycaster.setFromCamera(mouse, camera);
-
-    // Check for arrow controls first
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
             allArrows.push(...model.userData.positionControls);
         }
     });
-
+    
     const arrowIntersects = raycaster.intersectObjects(allArrows);
     if (arrowIntersects.length > 0) {
         const arrow = arrowIntersects[0].object;
         arrow.userData.targetModel.position.z += arrow.userData.moveAmount;
-
+        
         // Update arrow positions
         const controls = arrow.userData.targetModel.userData.positionControls;
         controls.forEach(control => {
@@ -1074,7 +1079,6 @@ async function onMouseClick(event) {
         });
         return;
     }
-
     // Check for attachment point clicks
     const intersects = raycaster.intersectObjects(attachmentPoints, true);
 
@@ -1084,29 +1088,25 @@ async function onMouseClick(event) {
         menuElement.style.display = 'block';
         
         // Position menu near cursor with smart viewport positioning
-        const menuWidth = 300;  // Approximate menu width
-        const menuHeight = Math.min(400, window.innerHeight * 0.8);  // Max menu height
+        const menuWidth = 300;
+        const menuHeight = Math.min(400, window.innerHeight * 0.8);
         
-        // Calculate available space in different directions
         const spaceRight = window.innerWidth - event.clientX;
         const spaceBottom = window.innerHeight - event.clientY;
         
-        // Determine x position
         let x = event.clientX;
         if (spaceRight < menuWidth) {
-            x = Math.max(0, window.innerWidth - menuWidth); // Align to right edge with padding
+            x = Math.max(0, window.innerWidth - menuWidth);
         }
         
-        // Determine y position
         let y = event.clientY;
         if (spaceBottom < menuHeight) {
-            y = Math.max(0, window.innerHeight - menuHeight); // Align to bottom edge
+            y = Math.max(0, window.innerHeight - menuHeight);
         }
         
         menuElement.style.left = x + 'px';
         menuElement.style.top = y + 'px';
     } else if (!event.target.closest('#modelSelect')) {
-        // Only hide menu if clicking outside both attachment points and menu
         selectedPoint = null;
         menuElement.style.display = 'none';
     }
@@ -1540,10 +1540,12 @@ async function attachModelAtPoint(modelPath) {
 function animate() {
     requestAnimationFrame(animate);
 
+    // Update controls if they exist
     if (controls) {
         controls.update();
     }
 
+    // Only render if we have all components
     if (scene && camera && renderer) {
         renderer.render(scene, camera);
     }
@@ -1657,7 +1659,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
     return 0;
 }
 function createPositionArrows(attachedModel) {
-    const arrowGeometry = new THREE.CylinderGeometry(1.5, 0, 6, 12); // Bigger arrows
+    const arrowGeometry = new THREE.CylinderGeometry(2, 0, 8, 16); // Bigger arrows
     const arrowMaterial = new THREE.MeshPhongMaterial({
         color: 0x00ff00,
         transparent: true,
@@ -1665,7 +1667,7 @@ function createPositionArrows(attachedModel) {
         emissive: 0x00ff00,
         emissiveIntensity: 0.5
     });
- 
+
     const box = new THREE.Box3().setFromObject(attachedModel);
     const size = box.getSize(new THREE.Vector3());
     const center = new THREE.Vector3(
@@ -1673,35 +1675,106 @@ function createPositionArrows(attachedModel) {
         attachedModel.position.y,
         attachedModel.position.z
     );
- 
+
+    // Store initial position as max height
+    attachedModel.userData.initialZ = attachedModel.position.z;
+    attachedModel.userData.minZ = attachedModel.position.z - 8; // 8mm down limit
+
     const upArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
     const downArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
- 
-    // Position 20mm away from model bounds
-    upArrow.position.set(center.x, center.y, center.z + size.z/2 + 20);
-    downArrow.position.set(center.x, center.y, center.z - size.z/2 - 20);
+
+    // Position 10mm away from model bounds
+    upArrow.position.set(center.x, center.y, center.z + size.z/2 + 10);
+    downArrow.position.set(center.x, center.y, center.z - size.z/2 - 10);
     
-    // Ensure arrows point up/down regardless of model rotation
     upArrow.rotation.x = -Math.PI/2;
     downArrow.rotation.x = Math.PI/2;
- 
+
     upArrow.userData = {
         type: 'positionControl',
         direction: 'up',
         targetModel: attachedModel,
-        moveAmount: 1
+        moveAmount: 0.2  // 0.2mm per movement for smoother motion
     };
     downArrow.userData = {
         type: 'positionControl',
         direction: 'down',
         targetModel: attachedModel,
-        moveAmount: -1
+        moveAmount: -0.2
     };
- 
-    // Make arrows children of the model so they move with it
+
     attachedModel.add(upArrow);
     attachedModel.add(downArrow);
- 
+
     return [upArrow, downArrow];
- }
+}
+function onMouseDown(event) {
+    raycaster.setFromCamera(mouse, camera);
+    const attachedModelArray = Array.from(attachedModels.values());
+    const arrows = attachedModelArray
+        .flatMap(model => model.userData.positionControls || []);
+    
+    const intersects = raycaster.intersectObjects(arrows, true);
+    if (intersects.length > 0) {
+        selectedArrow = intersects[0].object;
+        isMovingPart = true;
+        if (!moveInterval) {
+            moveInterval = setInterval(() => {
+                if (isMovingPart && selectedArrow.userData.targetModel) {
+                    const model = selectedArrow.userData.targetModel;
+                    const newZ = model.position.z + selectedArrow.userData.moveAmount;
+                    if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
+                        model.position.z = newZ;
+                    }
+                }
+            }, 50);
+        }
+    }
+}
+function onMouseUp() {
+    isMovingPart = false;
+    selectedArrow = null;
+    if (moveInterval) {
+        clearInterval(moveInterval);
+        moveInterval = null;
+    }
+}
+function onMouseDown(event) {
+    raycaster.setFromCamera(mouse, camera);
+    const allArrows = [];
+    attachedModels.forEach(model => {
+        if (model.userData.positionControls) {
+            allArrows.push(...model.userData.positionControls);
+        }
+    });
+
+    const intersects = raycaster.intersectObjects(allArrows);
+    if (intersects.length > 0) {
+        selectedArrow = intersects[0].object;
+        isMovingPart = true;
+        startContinuousMove();
+    }
+}
+function startContinuousMove() {
+    if (moveInterval) clearInterval(moveInterval);
+    moveInterval = setInterval(() => {
+        if (!isMovingPart || !selectedArrow) return;
+
+        const targetModel = selectedArrow.userData.targetModel;
+        const newZ = targetModel.position.z + selectedArrow.userData.moveAmount;
+
+        // Check limits
+        if (newZ <= targetModel.userData.minZ || newZ >= targetModel.userData.initialZ) {
+            return;
+        }
+
+        targetModel.position.z = newZ;
+        // Update arrow positions if they're not children of the model
+        targetModel.userData.positionControls.forEach(arrow => {
+            if (arrow.parent !== targetModel) {
+                arrow.position.z = newZ + (arrow.userData.direction === 'up' ? 25 : -25);
+            }
+        });
+    }, 16); // ~60fps update rate
+}
 init();
