@@ -1338,17 +1338,17 @@ async function attachModelAtPoint(modelPath) {
              
                         // Calculate centers for positioning
                         const baseCenter = new THREE.Vector3(
-                            baseGroup.faces[0].position.x,
-                            baseGroup.faces[0].position.y,
-                            baseGroup.faces[0].position.z
+                            (baseGroup.faces[0].position.x + baseGroup.faces[1].position.x) / 2,
+                            (baseGroup.faces[0].position.y + baseGroup.faces[1].position.y) / 2,
+                            (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2
                         );
                         const attachCenter = new THREE.Vector3(
-                            attachGroup.faces[1].position.x,
-                            attachGroup.faces[1].position.y,
-                            attachGroup.faces[1].position.z
+                            (attachGroup.faces[0].position.x + attachGroup.faces[1].position.x) / 2,
+                            (attachGroup.faces[0].position.y + attachGroup.faces[1].position.y) / 2,
+                            (attachGroup.faces[0].position.z + attachGroup.faces[1].position.z) / 2
                         );
-
-                        // Position using front face centers instead of midpoint
+             
+                        // Position using centers
                         const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                         const offset = baseCenter.clone().sub(transformedAttachCenter);
              
