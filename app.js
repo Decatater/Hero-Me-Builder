@@ -1339,8 +1339,8 @@ async function attachModelAtPoint(modelPath) {
                         // Calculate centers for positioning
                         const baseCenter = new THREE.Vector3(
                             (baseGroup.faces[0].position.x + baseGroup.faces[1].position.x) / 2,
-                            (baseGroup.faces[0].position.y + baseGroup.faces[1].position.y) / 2,
-                            (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2
+                            (baseGroup.faces[0].position.y + baseGroup.faces[1].position.y) / 2 - (isRightSide ? 1.5 : 2),
+                            (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2 // 4mm forward for right side, 2mm for left
                         );
                         const attachCenter = new THREE.Vector3(
                             (attachGroup.faces[0].position.x + attachGroup.faces[1].position.x) / 2,
