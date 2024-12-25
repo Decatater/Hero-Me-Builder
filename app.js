@@ -1031,19 +1031,42 @@ function onMouseMove(event) {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(attachmentPoints, true);
-
+    
+    // Check attachment points
+    const pointIntersects = raycaster.intersectObjects(attachmentPoints, true);
     attachmentPoints.forEach(point => {
         point.material.emissiveIntensity = 0.5;
         point.scale.setScalar(1);
     });
-
-    if (intersects.length > 0) {
-        const point = intersects[0].object;
+    if (pointIntersects.length > 0) {
+        const point = pointIntersects[0].object;
         point.material.emissiveIntensity = 1;
         point.scale.setScalar(1.2);
     }
+
+    // Check arrows
+    const allArrows = [];
+    attachedModels.forEach(model => {
+        if (model.userData.positionControls) {
+            allArrows.push(...model.userData.positionControls);
+        }
+    });
+
+    const arrowIntersects = raycaster.intersectObjects(allArrows)
+        .filter(hit => hit.object.userData.type === 'positionControl');
+
+    allArrows.forEach(arrow => {
+        arrow.material.emissiveIntensity = 0.5;
+        arrow.scale.setScalar(1.0);
+    });
+
+    if (arrowIntersects.length > 0 && !isMovingPart) {
+        const arrow = arrowIntersects[0].object;
+        arrow.material.emissiveIntensity = 1.0;
+        arrow.scale.setScalar(1.2);
+    }
 }
+
 
 async function onMouseClick(event) {
 
@@ -1576,6 +1599,11 @@ function onDoubleClick(event) {
             if (model === targetMesh) {
                 point.visible = true;
                 mainModel.remove(model);
+                if (model.userData.positionControls) {
+                    model.userData.positionControls.forEach(arrow => {
+                        mainModel.remove(arrow);
+                    });
+                }
                 attachedModels.delete(point);
                 break;
             }
@@ -1665,7 +1693,9 @@ function createPositionArrows(attachedModel) {
         transparent: true,
         opacity: 0.8,
         emissive: 0x00ff00,
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.5,
+        depthTest: false,
+        depthWrite: false
     });
 
     const box = new THREE.Box3().setFromObject(attachedModel);
@@ -1709,37 +1739,7 @@ function createPositionArrows(attachedModel) {
     return [upArrow, downArrow];
 }
 function onMouseDown(event) {
-    raycaster.setFromCamera(mouse, camera);
-    const attachedModelArray = Array.from(attachedModels.values());
-    const arrows = attachedModelArray
-        .flatMap(model => model.userData.positionControls || []);
-    
-    const intersects = raycaster.intersectObjects(arrows, true);
-    if (intersects.length > 0) {
-        selectedArrow = intersects[0].object;
-        isMovingPart = true;
-        if (!moveInterval) {
-            moveInterval = setInterval(() => {
-                if (isMovingPart && selectedArrow.userData.targetModel) {
-                    const model = selectedArrow.userData.targetModel;
-                    const newZ = model.position.z + selectedArrow.userData.moveAmount;
-                    if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
-                        model.position.z = newZ;
-                    }
-                }
-            }, 50);
-        }
-    }
-}
-function onMouseUp() {
-    isMovingPart = false;
-    selectedArrow = null;
-    if (moveInterval) {
-        clearInterval(moveInterval);
-        moveInterval = null;
-    }
-}
-function onMouseDown(event) {
+    event.preventDefault();
     raycaster.setFromCamera(mouse, camera);
     const allArrows = [];
     attachedModels.forEach(model => {
@@ -1748,11 +1748,37 @@ function onMouseDown(event) {
         }
     });
 
-    const intersects = raycaster.intersectObjects(allArrows);
+    const intersects = raycaster.intersectObjects(allArrows)
+        .filter(hit => hit.object.userData.type === 'positionControl');
+
     if (intersects.length > 0) {
+        controls.enabled = false;
         selectedArrow = intersects[0].object;
+        selectedArrow.material.emissiveIntensity = 0.5;
+        selectedArrow.scale.setScalar(1.0);
         isMovingPart = true;
-        startContinuousMove();
+
+        if (!moveInterval) {
+            moveInterval = setInterval(() => {
+                const model = selectedArrow.userData.targetModel;
+                const newZ = model.position.z + selectedArrow.userData.moveAmount;
+                
+                if (newZ > model.userData.minZ && newZ < model.userData.initialZ) {
+                    model.position.z = newZ;
+                    selectedArrow.position.z = newZ + (selectedArrow.userData.direction === 'up' ? size.z/2 + 10 : -size.z/2 - 10);
+                }
+            }, 16);
+        }
+    }
+}
+
+function onMouseUp() {
+    controls.enabled = true; // Re-enable controls
+    isMovingPart = false;
+    selectedArrow = null;
+    if (moveInterval) {
+        clearInterval(moveInterval);
+        moveInterval = null;
     }
 }
 function startContinuousMove() {
