@@ -34,7 +34,7 @@ This project uses the following libraries:
 ## Additional Requirements
 
 - [Python 3](https://www.python.org/downloads/): For running the local server.
-- 
+
 ## AI Disclaimer
 
 I am not a javascript developer, I can hardly write html. This code is written by Claude Sonnet 3.5, with an unreasonable amount of prompts. This is far too complex to be a "make a hero me builder" prompt, I am putting in a real amount of effort yelling at this damn robot. As much as a real dev would writing this by hand, though? Definitely not. Take a gander through the commit history if youd like to see how awful some of the first builds were. 

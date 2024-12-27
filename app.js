@@ -3,6 +3,7 @@ let selectedPoint = null;
 let attachmentPoints = [];
 let attachedModels = new Map(); // Map to track which points have models attached
 let isMovingPart = false;
+let isMouseDown = false;
 let moveInterval = null;
 let selectedArrow = null;
 const raycaster = new THREE.Raycaster();
@@ -414,13 +415,16 @@ function init() {
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
     // Add event listeners
-    window.addEventListener('resize', onWindowResize, false);
+    window.addEventListener('mousedown', (e) => {
+        console.log("Raw mousedown event fired");
+        console.log("Target:", e.target);
+    }, true);
+    window.addEventListener('resize', onWindowResize, false); 
+    window.addEventListener('mousedown', onMouseDown, true); // Use capture phase
+    window.addEventListener('mouseup', onMouseUp, true);    // Use capture phase
+    window.addEventListener('mousemove', onMouseMove, false);
     window.addEventListener('click', onMouseClick, false);
     window.addEventListener('dblclick', onDoubleClick, false);
-    window.addEventListener('mousemove', onMouseMove, false);
-    window.addEventListener('mousedown', onMouseDown, false);
-    window.addEventListener('mouseup', onMouseUp, false);
-
     // Setup controls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -1035,16 +1039,61 @@ function onMouseMove(event) {
     // Check attachment points
     const pointIntersects = raycaster.intersectObjects(attachmentPoints, true);
     attachmentPoints.forEach(point => {
-        point.material.emissiveIntensity = 0.5;
-        point.scale.setScalar(1);
+        if (point.visible) {
+            point.material.emissiveIntensity = 0.5;
+            point.scale.setScalar(1);
+        }
     });
+    
     if (pointIntersects.length > 0) {
         const point = pointIntersects[0].object;
-        point.material.emissiveIntensity = 1;
-        point.scale.setScalar(1.2);
+        if (point.visible) {
+            point.material.emissiveIntensity = 1;
+            point.scale.setScalar(1.2);
+        }
     }
 
-    // Check arrows
+    // Only check arrows if we're not currently moving one
+    if (!isMovingPart) {
+        const allArrows = [];
+        attachedModels.forEach(model => {
+            if (model.userData.positionControls) {
+                allArrows.push(...model.userData.positionControls);
+            }
+        });
+
+        const arrowIntersects = raycaster.intersectObjects(allArrows)
+            .filter(hit => hit.object.userData.type === 'positionControl');
+
+        allArrows.forEach(arrow => {
+            arrow.material.emissiveIntensity = 0.5;
+            arrow.scale.setScalar(1.0);
+        });
+
+        if (arrowIntersects.length > 0) {
+            const arrow = arrowIntersects[0].object;
+            arrow.material.emissiveIntensity = 1.0;
+            arrow.scale.setScalar(1.2);
+        }
+    }
+}
+
+
+async function onMouseClick(event) {
+    // If clicking inside the menu, handle menu-specific logic
+    const menuElement = document.getElementById('modelSelect');
+    if (event.target.closest('#modelSelect')) {
+        if (event.target.closest('.menu-item') || event.target.closest('.back-button')) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return;
+    }
+
+    // Update raycaster
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check for arrow intersections first
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
@@ -1055,53 +1104,31 @@ function onMouseMove(event) {
     const arrowIntersects = raycaster.intersectObjects(allArrows)
         .filter(hit => hit.object.userData.type === 'positionControl');
 
-    allArrows.forEach(arrow => {
-        arrow.material.emissiveIntensity = 0.5;
-        arrow.scale.setScalar(1.0);
-    });
-
-    if (arrowIntersects.length > 0 && !isMovingPart) {
-        const arrow = arrowIntersects[0].object;
-        arrow.material.emissiveIntensity = 1.0;
-        arrow.scale.setScalar(1.2);
-    }
-}
-
-
-async function onMouseClick(event) {
-
-    // If clicking inside the menu, handle menu-specific logic
-    const menuElement = document.getElementById('modelSelect');
-    if (event.target.closest('#modelSelect')) {
-        // Only prevent default for menu items
-        if (event.target.closest('.menu-item') || event.target.closest('.back-button')) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        return;
-    }
-
-    // Check for attachment point clicks without stopping propagation
-    raycaster.setFromCamera(mouse, camera);
-    const allArrows = [];
-    attachedModels.forEach(model => {
-        if (model.userData.positionControls) {
-            allArrows.push(...model.userData.positionControls);
-        }
-    });
-    
-    const arrowIntersects = raycaster.intersectObjects(allArrows);
     if (arrowIntersects.length > 0) {
         const arrow = arrowIntersects[0].object;
-        arrow.userData.targetModel.position.z += arrow.userData.moveAmount;
+        const model = arrow.userData.targetModel;
+        const moveAmount = arrow.userData.moveAmount;
         
-        // Update arrow positions
-        const controls = arrow.userData.targetModel.userData.positionControls;
-        controls.forEach(control => {
-            control.position.z += arrow.userData.moveAmount;
-        });
+        // Single step movement
+        const newZ = model.position.z + moveAmount;
+        
+        if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
+            model.position.z = newZ;
+            
+            // Update arrow positions correctly based on model position
+            model.userData.positionControls.forEach(control => {
+                // Calculate offset based on which arrow it is
+                const offset = control.userData.direction === 'up' ? 10 : -10;
+                control.position.copy(model.position);
+                control.position.z += offset;
+            });
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
         return;
     }
+
     // Check for attachment point clicks
     const intersects = raycaster.intersectObjects(attachmentPoints, true);
 
@@ -1583,18 +1610,31 @@ function onWindowResize() {
 function onDoubleClick(event) {
     raycaster.setFromCamera(mouse, camera);
     
-    // Create an array of attached models to check for intersection
+    // Check for arrow intersections first
+    const allArrows = [];
+    attachedModels.forEach(model => {
+        if (model.userData.positionControls) {
+            allArrows.push(...model.userData.positionControls);
+        }
+    });
+
+    // If we hit an arrow, don't process the double click
+    const arrowIntersects = raycaster.intersectObjects(allArrows)
+        .filter(hit => hit.object.userData.type === 'positionControl');
+    if (arrowIntersects.length > 0) {
+        return;
+    }
+    
+    // Original model removal logic
     const attachedModelArray = Array.from(attachedModels.values());
     const intersects = raycaster.intersectObjects(attachedModelArray, true);
 
     if (intersects.length > 0) {
-        // Find the top-level mesh that was intersected
         let targetMesh = intersects[0].object;
         while (targetMesh.parent && targetMesh.parent !== mainModel) {
             targetMesh = targetMesh.parent;
         }
 
-        // Find and show the corresponding attachment point
         for (let [point, model] of attachedModels) {
             if (model === targetMesh) {
                 point.visible = true;
@@ -1687,7 +1727,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
     return 0;
 }
 function createPositionArrows(attachedModel) {
-    const arrowGeometry = new THREE.CylinderGeometry(2, 0, 8, 16); // Bigger arrows
+    const arrowGeometry = new THREE.CylinderGeometry(2, 0, 8, 16);
     const arrowMaterial = new THREE.MeshPhongMaterial({
         color: 0x00ff00,
         transparent: true,
@@ -1698,24 +1738,16 @@ function createPositionArrows(attachedModel) {
         depthWrite: false
     });
 
-    const box = new THREE.Box3().setFromObject(attachedModel);
-    const size = box.getSize(new THREE.Vector3());
-    const center = new THREE.Vector3(
-        attachedModel.position.x,
-        attachedModel.position.y,
-        attachedModel.position.z
-    );
-
     // Store initial position as max height
     attachedModel.userData.initialZ = attachedModel.position.z;
-    attachedModel.userData.minZ = attachedModel.position.z - 8; // 8mm down limit
+    attachedModel.userData.minZ = attachedModel.position.z - 8;
 
     const upArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
     const downArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
 
-    // Position 10mm away from model bounds
-    upArrow.position.set(center.x, center.y, center.z + size.z/2 + 10);
-    downArrow.position.set(center.x, center.y, center.z - size.z/2 - 10);
+    // Set fixed positions that never change - adding to scene directly
+    upArrow.position.set(attachedModel.position.x, attachedModel.position.y, attachedModel.position.z + 50);
+    downArrow.position.set(attachedModel.position.x, attachedModel.position.y, attachedModel.position.z - 50);
     
     upArrow.rotation.x = -Math.PI/2;
     downArrow.rotation.x = Math.PI/2;
@@ -1724,8 +1756,9 @@ function createPositionArrows(attachedModel) {
         type: 'positionControl',
         direction: 'up',
         targetModel: attachedModel,
-        moveAmount: 0.2  // 0.2mm per movement for smoother motion
+        moveAmount: 0.2
     };
+
     downArrow.userData = {
         type: 'positionControl',
         direction: 'down',
@@ -1733,14 +1766,18 @@ function createPositionArrows(attachedModel) {
         moveAmount: -0.2
     };
 
-    attachedModel.add(upArrow);
-    attachedModel.add(downArrow);
+    // Add to scene directly - DO NOT add to model
+    scene.add(upArrow);
+    scene.add(downArrow);
 
     return [upArrow, downArrow];
 }
 function onMouseDown(event) {
-    event.preventDefault();
+    if (event.target.closest('#modelSelect')) return;
+
     raycaster.setFromCamera(mouse, camera);
+    isMouseDown = true;
+
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
@@ -1752,55 +1789,43 @@ function onMouseDown(event) {
         .filter(hit => hit.object.userData.type === 'positionControl');
 
     if (intersects.length > 0) {
-        controls.enabled = false;
         selectedArrow = intersects[0].object;
-        selectedArrow.material.emissiveIntensity = 0.5;
-        selectedArrow.scale.setScalar(1.0);
+        controls.enabled = false;
         isMovingPart = true;
 
         if (!moveInterval) {
             moveInterval = setInterval(() => {
-                const model = selectedArrow.userData.targetModel;
-                const newZ = model.position.z + selectedArrow.userData.moveAmount;
-                
-                if (newZ > model.userData.minZ && newZ < model.userData.initialZ) {
-                    model.position.z = newZ;
-                    selectedArrow.position.z = newZ + (selectedArrow.userData.direction === 'up' ? size.z/2 + 10 : -size.z/2 - 10);
+                if (selectedArrow) {
+                    const model = selectedArrow.userData.targetModel;
+                    const newZ = model.position.z + selectedArrow.userData.moveAmount;
+                    
+                    if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
+                        model.position.z = newZ;
+                        
+                        // Update arrow positions
+                        model.userData.positionControls.forEach(arrow => {
+                            arrow.position.copy(model.position);
+                            if (arrow.userData.direction === 'up') {
+                                arrow.position.z += 30;
+                            } else {
+                                arrow.position.z -= 30;
+                            }
+                        });
+                    }
                 }
             }, 16);
         }
     }
 }
 
-function onMouseUp() {
-    controls.enabled = true; // Re-enable controls
+function onMouseUp(event) {
+    controls.enabled = true;
     isMovingPart = false;
     selectedArrow = null;
+    
     if (moveInterval) {
         clearInterval(moveInterval);
         moveInterval = null;
     }
-}
-function startContinuousMove() {
-    if (moveInterval) clearInterval(moveInterval);
-    moveInterval = setInterval(() => {
-        if (!isMovingPart || !selectedArrow) return;
-
-        const targetModel = selectedArrow.userData.targetModel;
-        const newZ = targetModel.position.z + selectedArrow.userData.moveAmount;
-
-        // Check limits
-        if (newZ <= targetModel.userData.minZ || newZ >= targetModel.userData.initialZ) {
-            return;
-        }
-
-        targetModel.position.z = newZ;
-        // Update arrow positions if they're not children of the model
-        targetModel.userData.positionControls.forEach(arrow => {
-            if (arrow.parent !== targetModel) {
-                arrow.position.z = newZ + (arrow.userData.direction === 'up' ? 25 : -25);
-            }
-        });
-    }, 16); // ~60fps update rate
 }
 init();
