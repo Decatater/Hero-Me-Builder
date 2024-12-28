@@ -69,7 +69,14 @@ const categoryMenus = {
         paths: ["heromedir/gantryadapters"]
     }
 };
-
+const partColors = {
+    'hotend': 0xff0000,    // Red
+    'skirt': 0x02ed87,     // Mint
+    'fanguard': 0x0000ff,  // Blue
+    'partcooling': 0xf531b7, // Pink
+    'wing': 0xffff00,      // Yellow
+    'gantry': 0x00ffff     // Cyan
+};
 // Function to load and cache geometry data from JSON
 async function loadGeometryData(modelPath) {
     const jsonPath = modelPath.replace('.stl', '.json');
@@ -612,7 +619,7 @@ function loadModel() {
                 color: 0x00ff00,
                 flatShading: false,
                 transparent: true,
-                opacity: 0.8
+                opacity: 1
             });
 
             // Create the mesh
@@ -1265,8 +1272,10 @@ async function attachModelAtPoint(modelPath) {
             }
 
             const material = new THREE.MeshPhongMaterial({
-                color: 0xff0000,
-                flatShading: false
+                color: partColors[selectedPoint.userData.attachmentType] || 0xff0000,
+                flatShading: false,
+                transparent: true, 
+                opacity: 1
             });
 
             const mesh = new THREE.Mesh(geometry, material);
