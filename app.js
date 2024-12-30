@@ -6,6 +6,7 @@ let isMovingPart = false;
 let isMouseDown = false;
 let moveInterval = null;
 let selectedArrow = null;
+const usedHolePatterns = new Map(); // Map<modelPath, Set<faceId>>
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 // State management for menu navigation
@@ -125,7 +126,16 @@ async function loadGeometryData(modelPath) {
 
 // Function to find matching hole patterns between two faces
 function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
-    console.log('Finding matches between faces');
+    console.log('\n=== Finding Matches Between Faces ===');
+    console.log('Base face ID:', baseFace.faceId);
+    console.log('Base face holes:', baseFace.holes.length);
+    console.log('Available attachment faces:', attachmentFaces.map(face => ({
+        id: face.faceId,
+        holes: face.holes.length
+    })));
+    console.log('Attachment type:', attachmentType);
+    console.log('Current model path:', window.currentAttachmentPath);
+    debugPatternTracking();
     let bestMatch = null;
     let maxScore = 0;
     let bestTransform = null;
@@ -135,7 +145,15 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
         ? attachmentFaces.filter(face => face.holes.length === 4)
         : attachmentFaces;
 
-    for (const attachFace of facesToCheck) {
+    // Filter out already used faces
+    const availableFaces = facesToCheck.filter(face => 
+        !isHolePatternUsed('currentAttachmentPath', face));
+    
+        console.log('Faces after filtering used ones:', availableFaces.map(face => ({
+            id: face.faceId,
+            holes: face.holes.length
+        })));
+    for (const attachFace of availableFaces) {
         // Try different rotation combinations
         const rotations = [
             { x: 0, y: 0, z: 0 },
@@ -188,12 +206,17 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     }
 
     // More lenient threshold since we're only looking at distances
-    if (bestMatch && bestTransform) {
+    if (bestMatch && bestTransform && maxScore > 0.6) {
         bestMatch.bestTransform = bestTransform;
         console.log('Best match found with score:', maxScore);
+        
+        // Mark both faces as used - using actual modelPath instead of placeholder
+        markHolePatternAsUsed('heromedir/base/UniversalBase.stl', baseFace);
+        markHolePatternAsUsed(window.currentAttachmentPath || 'unknown', bestMatch);
+        
+        return bestMatch;
     }
-
-    return maxScore > 0.6 ? bestMatch : null;
+    return null;
 }
 
 function isValidPosition(pos) {
@@ -1262,15 +1285,23 @@ async function attachModelAtPoint(modelPath) {
             attachGeometryData.orientationFace.normal.z
         ).normalize();
 
+        // When removing a model, reset its used patterns
+        if (attachedModels.has(selectedPoint)) {
+            const oldModel = attachedModels.get(selectedPoint);
+            if (oldModel.userData.modelPath) {
+                resetUsedPatterns(oldModel.userData.modelPath);
+            }
+            mainModel.remove(oldModel);
+            if (oldModel.userData.positionControls) {
+                oldModel.userData.positionControls.forEach(arrow => {
+                    mainModel.remove(arrow);
+                });
+            }
+            attachedModels.delete(selectedPoint);
+        }
+
         const loader = new THREE.STLLoader();
         loader.load(modelPath, function(geometry) {
-            // Remove any existing model at this point
-            if (attachedModels.has(selectedPoint)) {
-                const oldModel = attachedModels.get(selectedPoint);
-                mainModel.remove(oldModel);
-                attachedModels.delete(selectedPoint);
-            }
-
             const material = new THREE.MeshPhongMaterial({
                 color: partColors[selectedPoint.userData.attachmentType] || 0xff0000,
                 flatShading: false,
@@ -1279,6 +1310,7 @@ async function attachModelAtPoint(modelPath) {
             });
 
             const mesh = new THREE.Mesh(geometry, material);
+            mesh.userData.modelPath = modelPath; // Store model path for pattern tracking
 
             // Center the geometry
             geometry.computeBoundingBox();
@@ -1356,22 +1388,10 @@ async function attachModelAtPoint(modelPath) {
                         mesh.position.copy(offset);
              
                     } else {
-                        // Existing single duct logic
+                        // Single duct logic
                         const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
                         const baseGroup = isRightSide ? baseGeometryData.slideFaces[0] : baseGeometryData.slideFaces[1];
                         const attachGroup = attachGeometryData.slideFaces[0];
-             
-                        // Get orientation vectors
-                        const baseOrientation = new THREE.Vector3(
-                            baseGeometryData.orientationFace.normal.x,
-                            baseGeometryData.orientationFace.normal.y, 
-                            baseGeometryData.orientationFace.normal.z
-                        );
-                        const attachOrientation = new THREE.Vector3(
-                            attachGeometryData.orientationFace.normal.x,
-                            attachGeometryData.orientationFace.normal.y,
-                            attachGeometryData.orientationFace.normal.z
-                        );
              
                         // First align orientations to sky
                         const upVector = new THREE.Vector3(0, 0, 1);
@@ -1399,7 +1419,7 @@ async function attachModelAtPoint(modelPath) {
                         const baseCenter = new THREE.Vector3(
                             (baseGroup.faces[0].position.x + baseGroup.faces[1].position.x) / 2,
                             (baseGroup.faces[0].position.y + baseGroup.faces[1].position.y) / 2 - (isRightSide ? 1.5 : 2),
-                            (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2 // 4mm forward for right side, 2mm for left
+                            (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2
                         );
                         const attachCenter = new THREE.Vector3(
                             (attachGroup.faces[0].position.x + attachGroup.faces[1].position.x) / 2,
@@ -1413,18 +1433,7 @@ async function attachModelAtPoint(modelPath) {
              
                         // Check if right side needs 180° rotation
                         if (isRightSide) {
-                            const baseNormal = new THREE.Vector3(
-                                baseGroup.faces[0].normal.x,
-                                baseGroup.faces[0].normal.y,
-                                baseGroup.faces[0].normal.z
-                            );
-                            const attachNormal = new THREE.Vector3(
-                                attachGroup.faces[0].normal.x,
-                                attachGroup.faces[0].normal.y,
-                                attachGroup.faces[0].normal.z
-                            );
                             const angle = attachNormal.angleTo(baseNormal);
-                            
                             if (angle < Math.PI/2) {
                                 const rotationQuat = new THREE.Quaternion().setFromAxisAngle(
                                     new THREE.Vector3(0, 0, 1), 
@@ -1436,11 +1445,8 @@ async function attachModelAtPoint(modelPath) {
                         
                         mesh.position.copy(offset);
                     }
-                } else {
-                    console.error('Missing slide faces in one or both models');
-                    return;
                 }
-             } else {
+            } else {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
@@ -1452,7 +1458,11 @@ async function attachModelAtPoint(modelPath) {
 
                 // Find appropriate face based on attachment type
                 if (selectedPoint.userData.attachmentType === 'gantry') {
-                    for (const face of baseGeometryData.faces) {
+                    // Filter out used faces from baseGeometryData
+                    const availableFaces = baseGeometryData.faces.filter(face => 
+                        !isHolePatternUsed('heromedir/base/UniversalBase.stl', face));
+
+                    for (const face of availableFaces) {
                         if (face.holes && face.holes.length === 4) {
                             const center = calculateHolePatternCenter(face.holes);
                             const distance = localPoint.distanceTo(
@@ -1465,7 +1475,11 @@ async function attachModelAtPoint(modelPath) {
                         }
                     }
                 } else {
-                    for (const face of baseGeometryData.faces) {
+                    // Filter out used faces from baseGeometryData
+                    const availableFaces = baseGeometryData.faces.filter(face => 
+                        !isHolePatternUsed('heromedir/base/UniversalBase.stl', face));
+
+                    for (const face of availableFaces) {
                         if (face.holes && face.holes.length > 0) {
                             const center = calculateHolePatternCenter(face.holes);
                             const distance = localPoint.distanceTo(
@@ -1478,6 +1492,10 @@ async function attachModelAtPoint(modelPath) {
                         }
                     }
                 }
+
+                // Set current attachment path for pattern tracking
+                window.currentAttachmentPath = modelPath;  // Set this BEFORE calling findMatchingFaces
+                console.log('Setting current attachment path to:', modelPath);
 
                 const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
                 if (!matchingFace) {
@@ -1576,12 +1594,14 @@ async function attachModelAtPoint(modelPath) {
             mainModel.add(mesh);
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
+
             // Add position control arrows (right before UI reset)
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 const positionArrows = createPositionArrows(mesh);
                 mesh.userData.positionControls = positionArrows;
                 positionArrows.forEach(arrow => mainModel.add(arrow));
             }
+
             // Reset UI
             const dropdown = document.querySelector('.dropdown');
             if (dropdown) dropdown.value = '';
@@ -1653,6 +1673,11 @@ function onDoubleClick(event) {
                         mainModel.remove(arrow);
                     });
                 }
+                // Reset pattern tracking for both the base and the removed model
+                resetUsedPatterns('heromedir/base/UniversalBase.stl');
+                resetUsedPatterns(model.userData.modelPath);
+                console.log('Reset patterns after removing model:', model.userData.modelPath);
+                debugPatternTracking();
                 attachedModels.delete(point);
                 break;
             }
@@ -1836,5 +1861,43 @@ function onMouseUp(event) {
         clearInterval(moveInterval);
         moveInterval = null;
     }
+}
+// Function to mark a hole pattern as used
+function markHolePatternAsUsed(modelPath, face) {
+    if (!usedHolePatterns.has(modelPath)) {
+        usedHolePatterns.set(modelPath, new Set());
+    }
+    usedHolePatterns.get(modelPath).add(face.faceId);
+    console.log(`Marked face ${face.faceId} as used for model ${modelPath}`);
+    debugPatternTracking();
+}
+
+// Function to check if a hole pattern is already used
+function isHolePatternUsed(modelPath, face) {
+    const isUsed = usedHolePatterns.has(modelPath) && 
+                  usedHolePatterns.get(modelPath).has(face.faceId);
+    console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
+    return isUsed;
+}
+
+// Function to reset used patterns for a model
+function resetUsedPatterns(modelPath) {
+    console.log(`Resetting used patterns for model ${modelPath}`);
+    usedHolePatterns.delete(modelPath);
+    debugPatternTracking();
+}
+// Function to get all used patterns for a model
+function getUsedPatterns(modelPath) {
+    return usedHolePatterns.get(modelPath) || new Set();
+}
+// Debugs Pattern Tracking for secondary nodes
+function debugPatternTracking() {
+    console.log('\n=== Pattern Tracking Debug ===');
+    console.log('Current pattern tracking state:');
+    usedHolePatterns.forEach((patterns, modelPath) => {
+        console.log(`\nModel: ${modelPath}`);
+        console.log('Used face IDs:', Array.from(patterns));
+    });
+    console.log('========================\n');
 }
 init();
