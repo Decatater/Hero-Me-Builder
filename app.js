@@ -7,6 +7,7 @@ let isMouseDown = false;
 let moveInterval = null;
 let selectedArrow = null;
 const usedPatterns = new Map(); // Map<modelPath, { holes: Set<faceId>, slides: Set<groupIndex> }>
+const usedHolePatterns = new Map(); // Map<modelPath, Set<faceId>>
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 // State management for menu navigation
@@ -1917,15 +1918,16 @@ function markPatternAsUsed(modelPath, pattern) {
 }
 // Function to check if a hole pattern is already used
 function isPatternUsed(modelPath, pattern) {
+    
     if (!usedPatterns.has(modelPath)) return false;
     
     const modelPatterns = usedPatterns.get(modelPath);
     
     if (pattern.faceId !== undefined) {
         // Check hole pattern
-        const isUsed = modelPatterns.holes.has(pattern.faceId);
-        console.log(`Checking if hole pattern ${pattern.faceId} is used for model ${modelPath}: ${isUsed}`);
-        return isUsed;
+        const isUsed = usedHolePatterns.has(modelPath) &&
+            usedHolePatterns.get(modelPath).has(face.faceId);
+        console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
     } else if (pattern.groupIndex !== undefined) {
         // Check slide face
         const isUsed = modelPatterns.slides.has(pattern.groupIndex);
@@ -1938,6 +1940,7 @@ function isPatternUsed(modelPath, pattern) {
 // Function to reset used patterns for a model
 function resetPatterns(modelPath) {
     console.log(`Resetting all patterns for model ${modelPath}`);
+    usedHolePatterns.delete(modelPath);
     usedPatterns.delete(modelPath);
     debugPatternTracking();
 }
@@ -1953,6 +1956,10 @@ function debugPatternTracking() {
         console.log(`\nModel: ${modelPath}`);
         console.log('Used hole patterns:', Array.from(patterns.holes));
         console.log('Used slide faces:', Array.from(patterns.slides));
+    });
+    usedHolePatterns.forEach((patterns, modelPath) => {
+        console.log(`\nModel: ${modelPath}`);
+        console.log('Used face IDs:', Array.from(patterns));
     });
     console.log('========================\n');
 }
@@ -2008,5 +2015,22 @@ function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, att
     }
     
     return null;
+}
+// Function to mark a hole pattern as used
+function markHolePatternAsUsed(modelPath, face) {
+    if (!usedHolePatterns.has(modelPath)) {
+        usedHolePatterns.set(modelPath, new Set());
+    }
+    usedHolePatterns.get(modelPath).add(face.faceId);
+    console.log(`Marked face ${face.faceId} as used for model ${modelPath}`);
+    debugPatternTracking();
+}
+
+// Function to check if a hole pattern is already used
+function isHolePatternUsed(modelPath, face) {
+    const isUsed = usedHolePatterns.has(modelPath) && 
+                  usedHolePatterns.get(modelPath).has(face.faceId);
+    console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
+    return isUsed;
 }
 init();
