@@ -6,7 +6,7 @@ let isMovingPart = false;
 let isMouseDown = false;
 let moveInterval = null;
 let selectedArrow = null;
-const usedHolePatterns = new Map(); // Map<modelPath, Set<faceId>>
+const usedPatterns = new Map(); // Map<modelPath, { holes: Set<faceId>, slides: Set<groupIndex> }>
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 // State management for menu navigation
@@ -1320,8 +1320,25 @@ async function attachModelAtPoint(modelPath) {
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
                     const isDualDuct = attachGeometryData.slideFaces.length > 1;
-             
+                    window.currentAttachmentPath = modelPath;  // Set current path for tracking
+                    
+                    // Filter out used slide faces
+                    const availableBaseFaces = baseGeometryData.slideFaces.filter((group, index) => 
+                        !isPatternUsed('heromedir/base/UniversalBase.stl', { groupIndex: index })
+                    );
+                    
+                    const availableAttachFaces = attachGeometryData.slideFaces.filter((group, index) => 
+                        !isPatternUsed(modelPath, { groupIndex: index })
+                    );
+            
+                    console.log('Available base slide faces:', availableBaseFaces.length);
+                    console.log('Available attachment slide faces:', availableAttachFaces.length);
                     if (isDualDuct) {
+                        // Mark both slide face groups as used for dual duct
+                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: 0 });
+                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: 1 });
+                        markPatternAsUsed(modelPath, { groupIndex: 0 });
+                        markPatternAsUsed(modelPath, { groupIndex: 1 });
                         // Get orientation vectors
                         const baseOrientation = new THREE.Vector3(
                             baseGeometryData.orientationFace.normal.x,
@@ -1390,8 +1407,21 @@ async function attachModelAtPoint(modelPath) {
                     } else {
                         // Single duct logic
                         const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
+                        const baseGroupIndex = isRightSide ? 1 : 0;
+                        console.log('Single duct attachment - Current path:', window.currentAttachmentPath);
+
+                        // First mark patterns as used - using actual modelPath
+                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: baseGroupIndex });
+                        markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 1 });
+
                         const baseGroup = isRightSide ? baseGeometryData.slideFaces[0] : baseGeometryData.slideFaces[1];
                         const attachGroup = attachGeometryData.slideFaces[0];
+
+                        // Debug output to verify pattern tracking
+                        console.log('Marked patterns for single duct:');
+                        console.log('Base group index:', baseGroupIndex);
+                        console.log('Model path:', window.currentAttachmentPath);
+                        debugPatternTracking();
              
                         // First align orientations to sky
                         const upVector = new THREE.Vector3(0, 0, 1);
@@ -1673,9 +1703,9 @@ function onDoubleClick(event) {
                         mainModel.remove(arrow);
                     });
                 }
-                // Reset pattern tracking for both the base and the removed model
-                resetUsedPatterns('heromedir/base/UniversalBase.stl');
-                resetUsedPatterns(model.userData.modelPath);
+                // Reset all patterns for both models
+                resetPatterns('heromedir/base/UniversalBase.stl');
+                resetPatterns(model.userData.modelPath);
                 console.log('Reset patterns after removing model:', model.userData.modelPath);
                 debugPatternTracking();
                 attachedModels.delete(point);
@@ -1862,28 +1892,53 @@ function onMouseUp(event) {
         moveInterval = null;
     }
 }
-// Function to mark a hole pattern as used
-function markHolePatternAsUsed(modelPath, face) {
-    if (!usedHolePatterns.has(modelPath)) {
-        usedHolePatterns.set(modelPath, new Set());
+// Function to mark a pattern as used
+function markPatternAsUsed(modelPath, pattern) {
+    if (!usedPatterns.has(modelPath)) {
+        usedPatterns.set(modelPath, {
+            holes: new Set(),
+            slides: new Set()
+        });
     }
-    usedHolePatterns.get(modelPath).add(face.faceId);
-    console.log(`Marked face ${face.faceId} as used for model ${modelPath}`);
+    
+    const modelPatterns = usedPatterns.get(modelPath);
+    
+    if (pattern.faceId !== undefined) {
+        // It's a hole pattern
+        modelPatterns.holes.add(pattern.faceId);
+        console.log(`Marked hole pattern ${pattern.faceId} as used for model ${modelPath}`);
+    } else if (pattern.groupIndex !== undefined) {
+        // It's a slide face group
+        modelPatterns.slides.add(pattern.groupIndex);
+        console.log(`Marked slide face group ${pattern.groupIndex} as used for model ${modelPath}`);
+    }
+    
     debugPatternTracking();
 }
-
 // Function to check if a hole pattern is already used
-function isHolePatternUsed(modelPath, face) {
-    const isUsed = usedHolePatterns.has(modelPath) && 
-                  usedHolePatterns.get(modelPath).has(face.faceId);
-    console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
-    return isUsed;
+function isPatternUsed(modelPath, pattern) {
+    if (!usedPatterns.has(modelPath)) return false;
+    
+    const modelPatterns = usedPatterns.get(modelPath);
+    
+    if (pattern.faceId !== undefined) {
+        // Check hole pattern
+        const isUsed = modelPatterns.holes.has(pattern.faceId);
+        console.log(`Checking if hole pattern ${pattern.faceId} is used for model ${modelPath}: ${isUsed}`);
+        return isUsed;
+    } else if (pattern.groupIndex !== undefined) {
+        // Check slide face
+        const isUsed = modelPatterns.slides.has(pattern.groupIndex);
+        console.log(`Checking if slide face group ${pattern.groupIndex} is used for model ${modelPath}: ${isUsed}`);
+        return isUsed;
+    }
+    
+    return false;
 }
-
 // Function to reset used patterns for a model
-function resetUsedPatterns(modelPath) {
-    console.log(`Resetting used patterns for model ${modelPath}`);
-    usedHolePatterns.delete(modelPath);
+function resetPatterns(modelPath) {
+    console.log(`Resetting all patterns for model ${modelPath}`);
+    usedPatterns.delete(modelPath);
     debugPatternTracking();
 }
 // Function to get all used patterns for a model
@@ -1894,10 +1949,64 @@ function getUsedPatterns(modelPath) {
 function debugPatternTracking() {
     console.log('\n=== Pattern Tracking Debug ===');
     console.log('Current pattern tracking state:');
-    usedHolePatterns.forEach((patterns, modelPath) => {
+    usedPatterns.forEach((patterns, modelPath) => {
         console.log(`\nModel: ${modelPath}`);
-        console.log('Used face IDs:', Array.from(patterns));
+        console.log('Used hole patterns:', Array.from(patterns.holes));
+        console.log('Used slide faces:', Array.from(patterns.slides));
     });
     console.log('========================\n');
+}
+// Helper function for finding matching slide faces with pattern tracking
+function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, attachOrientation, isRightSide = false) {
+    console.log('Finding matching slide faces');
+    
+    const isDualSided = attachmentFaces.length > 1;
+    console.log(`Attachment is ${isDualSided ? 'dual-sided' : 'single-sided'}`);
+    
+    // Filter out used slide faces
+    const availableBaseFaces = baseFaces.filter((group, index) => 
+        !isPatternUsed('heromedir/base/UniversalBase.stl', { groupIndex: index })
+    );
+    
+    const availableAttachFaces = attachmentFaces.filter((group, index) => 
+        !isPatternUsed(window.currentAttachmentPath, { groupIndex: index })
+    );
+    
+    console.log('Available base slide faces:', availableBaseFaces.length);
+    console.log('Available attachment slide faces:', availableAttachFaces.length);
+    
+    // Get the appropriate groups based on side
+    let targetBaseGroup = isRightSide ? availableBaseFaces[1] : availableBaseFaces[0];
+    const targetAttachGroup = availableAttachFaces[0];
+    
+    if (!targetBaseGroup || !targetAttachGroup) {
+        console.log('No available slide faces found');
+        return null;
+    }
+    
+    const upVector = new THREE.Vector3(0, 1, 0);
+    const baseOrientQuat = new THREE.Quaternion().setFromUnitVectors(baseOrientation, upVector);
+    const attachOrientQuat = new THREE.Quaternion().setFromUnitVectors(attachOrientation, upVector);
+
+    const score = compareSlideFaceGroups(targetBaseGroup, targetAttachGroup);
+    console.log('Match score:', score);
+
+    if (score > 0.6) {
+        // Mark slide faces as used if we found a match
+        const baseGroupIndex = isRightSide ? 1 : 0;
+        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: baseGroupIndex });
+        markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
+        
+        return {
+            baseGroup: targetBaseGroup,
+            attachGroup: targetAttachGroup,
+            baseOrientQuat,
+            attachOrientQuat,
+            score,
+            isRightSide
+        };
+    }
+    
+    return null;
 }
 init();
