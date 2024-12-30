@@ -1,0 +1,6 @@
+1) need to use slide faces for probe wings
+2) it marks group as used when no face is found, does not clear
+3) attachment points arent replaced when no match is found
+4) attachment points arent being created for anything except wings and direct drive mounts
+5) it deletes parent models when removing a model, and doesnt clear the used group
+6) maybe make it recursively check which models are rendered and which groups they use to reset the base's used groups

@@ -69,6 +69,38 @@ const categoryMenus = {
     gantry: {
         title: "Gantry Adapter",
         paths: ["heromedir/gantryadapters"]
+    },
+    probe: {
+        title: "Probe Mounts",
+        paths: ["heromedir/ablmounts"],
+        filter: (item, userData) => {
+            const name = item.name.toLowerCase();
+            // Only show files with 'mount' in the name and show all folders
+            if (item.type === 'file') {
+                return name.endsWith('.stl') && name.includes('mount');
+            }
+            return true;
+        },
+        parentType: 'wing' // Only attach to wings
+    },
+    adxl: {
+        title: "ADXL345 Mounts",
+        paths: ["heromedir/adxl345"],
+        parentType: 'skirt' // Only attach to skirts
+    },
+    gantryclip: {
+        title: "Gantry Clips",
+        paths: ["heromedir/gantryadapters"],
+        filter: (item) => {
+            const name = item.name.toLowerCase();
+            return item.type === 'directory' || (name.endsWith('.stl') && name.includes('clip'));
+        },
+        parentType: 'gantry' // Only attach to gantry adapters
+    },
+    directdrive: {
+        title: "Direct Drive Mounts",
+        paths: ["heromedir/directdrivemounts"],
+        parentType: 'hotend' // Only attach to hotend mounts
     }
 };
 const partColors = {
@@ -77,7 +109,11 @@ const partColors = {
     'fanguard': 0x0000ff,  // Blue
     'partcooling': 0xf531b7, // Pink
     'wing': 0xffff00,      // Yellow
-    'gantry': 0x00ffff     // Cyan
+    'gantry': 0x00ffff,     // Cyan
+    'probe': 0xff8c00,     // Orange
+    'adxl': 0xa159e4,      // Pastel Purple
+    'gantryclip': 0x91cdcf, // Light Blue
+    'directdrive': 0xdfe081 // Pastellow
 };
 // Function to load and cache geometry data from JSON
 async function loadGeometryData(modelPath) {
@@ -1264,7 +1300,12 @@ async function attachModelAtPoint(modelPath) {
     if (!selectedPoint || !modelPath) return;
 
     try {
-        const baseGeometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
+        // For secondary attachments, load parent model's geometry instead of base
+        const baseModelPath = selectedPoint.userData.parentModel?.userData.modelPath || 'heromedir/base/UniversalBase.stl';
+        console.log('Selected point:', selectedPoint.userData);
+        console.log('Parent model:', selectedPoint.userData.parentModel?.userData);
+        console.log('Loading geometry from:', baseModelPath);
+        const baseGeometryData = await loadGeometryData(baseModelPath);
         const attachGeometryData = await loadGeometryData(modelPath);
 
         if (!baseGeometryData || !attachGeometryData) {
@@ -1310,17 +1351,20 @@ async function attachModelAtPoint(modelPath) {
             });
 
             const mesh = new THREE.Mesh(geometry, material);
-            mesh.userData.modelPath = modelPath; // Store model path for pattern tracking
+            mesh.userData.modelPath = modelPath;
+            mesh.userData.attachmentType = selectedPoint.userData.attachmentType;
             mesh.userData.usedPatterns = {
-                holes: new Set([...getUsedPatterns('heromedir/base/UniversalBase.stl')]),
-                slides: new Set([...(usedPatterns.get('heromedir/base/UniversalBase.stl')?.slides || [])])
+                holes: new Set([...getUsedPatterns(baseModelPath)]),
+                slides: new Set([...(usedPatterns.get(baseModelPath)?.slides || [])])
             };
+
             // Store used patterns based on attachment type
             if (selectedPoint.userData.attachmentType === 'partcooling') {
-                mesh.userData.usedSlides = new Set([...(usedPatterns.get('heromedir/base/UniversalBase.stl')?.slides || [])]);
+                mesh.userData.usedSlides = new Set([...(usedPatterns.get(baseModelPath)?.slides || [])]);
             } else {
-                mesh.userData.usedHoles = new Set([...(usedHolePatterns.get('heromedir/base/UniversalBase.stl') || [])]);
+                mesh.userData.usedHoles = new Set([...(usedHolePatterns.get(baseModelPath) || [])]);
             }
+
             // Center the geometry
             geometry.computeBoundingBox();
             const center = geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -1329,11 +1373,10 @@ async function attachModelAtPoint(modelPath) {
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
                     const isDualDuct = attachGeometryData.slideFaces.length > 1;
-                    window.currentAttachmentPath = modelPath;  // Set current path for tracking
+                    window.currentAttachmentPath = modelPath;
                     
-                    // Filter out used slide faces
                     const availableBaseFaces = baseGeometryData.slideFaces.filter((group, index) => 
-                        !isPatternUsed('heromedir/base/UniversalBase.stl', { groupIndex: index })
+                        !isPatternUsed(baseModelPath, { groupIndex: index })
                     );
                     
                     const availableAttachFaces = attachGeometryData.slideFaces.filter((group, index) => 
@@ -1343,29 +1386,11 @@ async function attachModelAtPoint(modelPath) {
                     console.log('Available base slide faces:', availableBaseFaces.length);
                     console.log('Available attachment slide faces:', availableAttachFaces.length);
                     if (isDualDuct) {
-                        // Mark both slide face groups as used for dual duct
-                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: 0 });
-                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: 1 });
+                        markPatternAsUsed(baseModelPath, { groupIndex: 0 });
+                        markPatternAsUsed(baseModelPath, { groupIndex: 1 });
                         markPatternAsUsed(modelPath, { groupIndex: 0 });
                         markPatternAsUsed(modelPath, { groupIndex: 1 });
-                        // Get orientation vectors
-                        const baseOrientation = new THREE.Vector3(
-                            baseGeometryData.orientationFace.normal.x,
-                            baseGeometryData.orientationFace.normal.y, 
-                            baseGeometryData.orientationFace.normal.z
-                        );
-                        const attachOrientation = new THREE.Vector3(
-                            attachGeometryData.orientationFace.normal.x,
-                            attachGeometryData.orientationFace.normal.y,
-                            attachGeometryData.orientationFace.normal.z
-                        );
-             
-                        // First align orientations to sky
-                        const upVector = new THREE.Vector3(0, 0, 1);
-                        const orientQuat = new THREE.Quaternion();
-                        orientQuat.setFromUnitVectors(attachOrientation, upVector);
-                        mesh.quaternion.copy(orientQuat);
-             
+
                         // Calculate centers of both base groups
                         const baseCenterLeft = new THREE.Vector3(
                             (baseGeometryData.slideFaces[1].faces[0].position.x + baseGeometryData.slideFaces[1].faces[1].position.x) / 2,
@@ -1392,6 +1417,12 @@ async function attachModelAtPoint(modelPath) {
                         );
                         const attachCenter = new THREE.Vector3().addVectors(attachCenterLeft, attachCenterRight).multiplyScalar(0.5);
              
+                        // First align orientations to sky
+                        const upVector = new THREE.Vector3(0, 0, 1);
+                        const orientQuat = new THREE.Quaternion();
+                        orientQuat.setFromUnitVectors(attachOrientation, upVector);
+                        mesh.quaternion.copy(orientQuat);
+
                         // Align normals between dual duct faces
                         const baseNormalLeft = new THREE.Vector3(
                             baseGeometryData.slideFaces[1].faces[0].normal.x,
@@ -1417,20 +1448,12 @@ async function attachModelAtPoint(modelPath) {
                         // Single duct logic
                         const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
                         const baseGroupIndex = isRightSide ? 0 : 1;
-                        console.log('Single duct attachment - Current path:', window.currentAttachmentPath);
 
-                        // First mark patterns as used - using actual modelPath
-                        markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: baseGroupIndex });
+                        markPatternAsUsed(baseModelPath, { groupIndex: baseGroupIndex });
                         markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 1 });
 
                         const baseGroup = isRightSide ? baseGeometryData.slideFaces[0] : baseGeometryData.slideFaces[1];
                         const attachGroup = attachGeometryData.slideFaces[0];
-
-                        // Debug output to verify pattern tracking
-                        console.log('Marked patterns for single duct:');
-                        console.log('Base group index:', baseGroupIndex);
-                        console.log('Model path:', window.currentAttachmentPath);
-                        debugPatternTracking();
              
                         // First align orientations to sky
                         const upVector = new THREE.Vector3(0, 0, 1);
@@ -1489,53 +1512,56 @@ async function attachModelAtPoint(modelPath) {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
+                
+                // For secondary attachments, transform point relative to parent model
                 const localPoint = attachmentPointWorld.clone()
-                    .applyMatrix4(mainModel.matrixWorld.clone().invert());
+                    .applyMatrix4((selectedPoint.userData.parentModel || mainModel).matrixWorld.clone().invert());
 
                 let closestFace = null;
                 let minDistance = Infinity;
 
-                // Find appropriate face based on attachment type
-                if (selectedPoint.userData.attachmentType === 'gantry') {
-                    // Filter out used faces from baseGeometryData
-                    const availableFaces = baseGeometryData.faces.filter(face => 
-                        !isHolePatternUsed('heromedir/base/UniversalBase.stl', face));
+                // For secondary attachments, use the face specified in the attachment point
+                if (selectedPoint.userData.parentModel && selectedPoint.userData.faceId) {
+                    closestFace = baseGeometryData.faces.find(face => face.faceId === selectedPoint.userData.faceId);
+                } else {
+                    // Find appropriate face based on attachment type
+                    if (selectedPoint.userData.attachmentType === 'gantry' || 
+                        selectedPoint.userData.attachmentType === 'gantryclip') {
+                        const availableFaces = baseGeometryData.faces.filter(face => 
+                            !isHolePatternUsed(baseModelPath, face));
 
-                    for (const face of availableFaces) {
-                        if (face.holes && face.holes.length === 4) {
-                            const center = calculateHolePatternCenter(face.holes);
-                            const distance = localPoint.distanceTo(
-                                new THREE.Vector3(center.x, center.y, center.z)
-                            );
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                closestFace = face;
+                        for (const face of availableFaces) {
+                            if (face.holes && face.holes.length === 4) {
+                                const center = calculateHolePatternCenter(face.holes);
+                                const distance = localPoint.distanceTo(
+                                    new THREE.Vector3(center.x, center.y, center.z)
+                                );
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    closestFace = face;
+                                }
                             }
                         }
-                    }
-                } else {
-                    // Filter out used faces from baseGeometryData
-                    const availableFaces = baseGeometryData.faces.filter(face => 
-                        !isHolePatternUsed('heromedir/base/UniversalBase.stl', face));
+                    } else {
+                        const availableFaces = baseGeometryData.faces.filter(face => 
+                            !isHolePatternUsed(baseModelPath, face));
 
-                    for (const face of availableFaces) {
-                        if (face.holes && face.holes.length > 0) {
-                            const center = calculateHolePatternCenter(face.holes);
-                            const distance = localPoint.distanceTo(
-                                new THREE.Vector3(center.x, center.y, center.z)
-                            );
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                closestFace = face;
+                        for (const face of availableFaces) {
+                            if (face.holes && face.holes.length > 0) {
+                                const center = calculateHolePatternCenter(face.holes);
+                                const distance = localPoint.distanceTo(
+                                    new THREE.Vector3(center.x, center.y, center.z)
+                                );
+                                if (distance < minDistance) {
+                                    minDistance = distance;
+                                    closestFace = face;
+                                }
                             }
                         }
                     }
                 }
 
-                // Set current attachment path for pattern tracking
-                window.currentAttachmentPath = modelPath;  // Set this BEFORE calling findMatchingFaces
-                console.log('Setting current attachment path to:', modelPath);
-
+                window.currentAttachmentPath = modelPath;
                 const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
                 if (!matchingFace) {
                     console.error('No matching face pattern found');
@@ -1560,11 +1586,15 @@ async function attachModelAtPoint(modelPath) {
                     );
 
                     // Handle specific attachment type alignments
-                    if (selectedPoint.userData.attachmentType === 'hotend') {
+                    if (selectedPoint.userData.attachmentType === 'hotend' || 
+                        selectedPoint.userData.attachmentType === 'directdrive') {
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
-
+                        if (selectedPoint.userData.attachmentType === 'directdrive') {
+                            const rotateQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            mesh.quaternion.premultiply(rotateQuat);
+                        }
                         const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
                         if (rotatedOrientation.y < 0) {
                             const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
@@ -1595,7 +1625,8 @@ async function attachModelAtPoint(modelPath) {
                             const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                             mesh.quaternion.premultiply(flipQuat);
                         }
-                    } else if (selectedPoint.userData.attachmentType === 'gantry') {
+                    } else if (selectedPoint.userData.attachmentType === 'gantry' || 
+                             selectedPoint.userData.attachmentType === 'gantryclip') {
                         const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
 
@@ -1611,6 +1642,12 @@ async function attachModelAtPoint(modelPath) {
                             );
                             mesh.quaternion.premultiply(rotQuat);
                         }
+                    } else if (selectedPoint.userData.attachmentType === 'probe' || 
+                             selectedPoint.userData.attachmentType === 'adxl') {
+                        // Use standard alignment for secondary attachments
+                        const normalQuat = new THREE.Quaternion();
+                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.copy(normalQuat);
                     } else {
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
@@ -1623,25 +1660,48 @@ async function attachModelAtPoint(modelPath) {
                     // Position based on pattern centers
                     const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                     const offset = baseCenter.clone().sub(transformedAttachCenter);
-                    const offsetAmount = selectedPoint.userData.attachmentType === 'hotend' ? -2 : 0;
+                    const offsetAmount = (selectedPoint.userData.attachmentType === 'hotend') ? -2 : 0;
                     const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
                     mesh.position.copy(offset.add(normalOffset));
+
+                    
                 }
             }
 
-            // Add mesh to scene and update state
-            mainModel.add(mesh);
+            // Add to appropriate parent
+            const parentModel = selectedPoint.userData.parentModel || mainModel;
+            parentModel.add(mesh);
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
 
-            // Add position control arrows (right before UI reset)
+            // Add position control arrows for part cooling
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 const positionArrows = createPositionArrows(mesh);
                 mesh.userData.positionControls = positionArrows;
                 positionArrows.forEach(arrow => mainModel.add(arrow));
             }
 
-            // Reset UI
+            // Create secondary attachment points if applicable
+            const menuConfig = categoryMenus[selectedPoint.userData.attachmentType];
+            if (!menuConfig?.parentType) {  // Only create points if this isn't already a secondary attachment
+                createSecondaryAttachmentPoints(mesh).then(() => {
+                    // Reset UI after points are created
+                    const dropdown = document.querySelector('.dropdown');
+                    if (dropdown) dropdown.value = '';
+                    document.getElementById('modelSelect').style.display = 'none';
+                    selectedPoint = null;
+                    renderer.render(scene, camera);
+                });
+            } else {
+                // Reset UI immediately if no secondary points needed
+                const dropdown = document.querySelector('.dropdown');
+                if (dropdown) dropdown.value = '';
+                document.getElementById('modelSelect').style.display = 'none';
+                selectedPoint = null;
+                renderer.render(scene, camera);
+            }
+
+            // Initial render
             const dropdown = document.querySelector('.dropdown');
             if (dropdown) dropdown.value = '';
             document.getElementById('modelSelect').style.display = 'none';
@@ -1842,19 +1902,17 @@ function createPositionArrows(attachedModel) {
         type: 'positionControl',
         direction: 'up',
         targetModel: attachedModel,
-        moveAmount: 0.2
+        moveAmount: 0.5
     };
 
     downArrow.userData = {
         type: 'positionControl',
         direction: 'down',
         targetModel: attachedModel,
-        moveAmount: -0.2
+        moveAmount: -0.5
     };
-
-    // Add to scene directly - DO NOT add to model
-    scene.add(upArrow);
-    scene.add(downArrow);
+    attachedModel.add(upArrow);
+    attachedModel.add(downArrow);
 
     return [upArrow, downArrow];
 }
@@ -2045,5 +2103,106 @@ function isHolePatternUsed(modelPath, face) {
                   usedHolePatterns.get(modelPath).has(face.faceId);
     console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
     return isUsed;
+}
+// Function to create attachment points on secondary models
+async function createSecondaryAttachmentPoints(model) {
+    const geometryData = await loadGeometryData(model.userData.modelPath);
+    if (!geometryData?.faces) return;
+
+    const sphereGeometry = new THREE.SphereGeometry(3.0, 32, 32);
+    const sphereMaterial = new THREE.MeshPhongMaterial({
+        color: 0x800080,
+        transparent: true,
+        opacity: 0.8,
+        emissive: 0x800080,
+        emissiveIntensity: 0.5,
+        shininess: 50
+    });
+
+    // Find compatible secondary attachment types based on parent type
+    const parentType = model.userData.attachmentType;
+    const compatibleTypes = Object.entries(categoryMenus)
+        .filter(([_, menu]) => menu.parentType === parentType)
+        .map(([type, _]) => type);
+
+    if (compatibleTypes.length === 0) return;
+
+    // Filter out faces that are already in use
+    const availableFaces = geometryData.faces.filter(face => 
+        !isHolePatternUsed(model.userData.modelPath, face) &&
+        face.holes?.length > 0
+    );
+
+    availableFaces.forEach(face => {
+        const center = calculateHolePatternCenter(face.holes);
+        const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+        
+        // Create attachment point
+        const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+        center.add(normal.clone().multiplyScalar(5)); // 5mm offset
+        point.position.copy(center);
+        
+        // Assign properties for the first compatible type
+        const attachmentType = compatibleTypes[0];
+        point.userData = {
+            attachmentType,
+            attachmentName: attachmentType,
+            normal,
+            parentModel: model,
+            faceId: face.faceId
+        };
+        
+        model.add(point);
+        attachmentPoints.push(point);
+    });
+}
+function alignSecondaryModel(mesh, attachPoint, baseGeometryData, attachGeometryData) {
+    const parentModel = attachPoint.userData.parentModel;
+    
+    // Find the face we're attaching to
+    const attachToFace = baseGeometryData.faces.find(f => f.faceId === attachPoint.userData.faceId);
+    if (!attachToFace) return;
+
+    // Find matching face on attachment
+    const matchingFace = findMatchingFaces(attachToFace, attachGeometryData.faces, attachPoint.userData.attachmentType);
+    if (!matchingFace) return;
+
+    // Calculate centers and normals
+    const baseCenter = calculateHolePatternCenter(attachToFace.holes);
+    const attachCenter = calculateHolePatternCenter(matchingFace.holes);
+    
+    const baseNormal = new THREE.Vector3(
+        attachToFace.normal.x,
+        attachToFace.normal.y,
+        attachToFace.normal.z
+    );
+    
+    const attachNormal = new THREE.Vector3(
+        matchingFace.normal.x,
+        matchingFace.normal.y,
+        matchingFace.normal.z
+    );
+
+    // Align normals
+    const normalQuat = new THREE.Quaternion();
+    normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+    mesh.quaternion.copy(normalQuat);
+
+    // Position based on hole pattern centers
+    const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+    const offset = baseCenter.clone().sub(transformedAttachCenter);
+    mesh.position.copy(offset);
+
+    // Apply parent model's transform
+    mesh.position.applyMatrix4(parentModel.matrixWorld);
+    const parentQuat = new THREE.Quaternion();
+    parentModel.getWorldQuaternion(parentQuat);
+    mesh.quaternion.premultiply(parentQuat);
+}
+function resetUIState() {
+    const dropdown = document.querySelector('.dropdown');
+    if (dropdown) dropdown.value = '';
+    document.getElementById('modelSelect').style.display = 'none';
+    selectedPoint = null;
 }
 init();

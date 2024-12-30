@@ -45,78 +45,6 @@
           "axis": "Y"
         }
       ]
-    },
-    {
-      "faceId": 2,
-      "normal": {
-        "x": 0,
-        "y": 0,
-        "z": 1
-      },
-      "holes": [
-        {
-          "id": 1,
-          "diameter": 3.69,
-          "position": {
-            "x": 15.88,
-            "y": 16.03,
-            "z": 1.29
-          },
-          "rotation": {
-            "x": 0,
-            "y": 0,
-            "z": -180
-          }
-        },
-        {
-          "id": 2,
-          "diameter": 3.79,
-          "position": {
-            "x": 15.84,
-            "y": 8.71,
-            "z": 1.29
-          },
-          "rotation": {
-            "x": 0,
-            "y": 0,
-            "z": -180
-          }
-        },
-        {
-          "id": 3,
-          "diameter": 3.75,
-          "position": {
-            "x": 15.93,
-            "y": 1.46,
-            "z": 1.29
-          },
-          "rotation": {
-            "x": 0,
-            "y": 0,
-            "z": -180
-          }
-        }
-      ],
-      "alignedDistances": [
-        {
-          "from": 1,
-          "to": 2,
-          "distance": 7.32,
-          "axis": "Y"
-        },
-        {
-          "from": 1,
-          "to": 3,
-          "distance": 14.56,
-          "axis": "Y"
-        },
-        {
-          "from": 2,
-          "to": 3,
-          "distance": 7.25,
-          "axis": "Y"
-        }
-      ]
     }
   ],
   "orientationFace": {
@@ -131,6 +59,50 @@
       "z": -180
     }
   },
-  "totalHoles": 5,
-  "timestamp": "2024-12-19T17:11:14.234Z"
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": 16.3,
+            "y": 11.39,
+            "z": 1.29
+          },
+          "dimensions": {
+            "width": 4.25,
+            "height": 22.75,
+            "center2D": {
+              "x": 0.375,
+              "y": 2.625
+            },
+            "bounds2D": {
+              "min": {
+                "x": -1.75,
+                "y": -8.75
+              },
+              "max": {
+                "x": 2.5,
+                "y": 14
+              }
+            }
+          }
+        }
+      ],
+      "distances": []
+    }
+  ],
+  "totalHoles": 2,
+  "timestamp": "2024-12-30T19:45:01.392Z"
 }

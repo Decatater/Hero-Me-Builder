@@ -4,36 +4,36 @@
       "faceId": 1,
       "normal": {
         "x": 0,
-        "y": -1,
-        "z": 0
+        "y": 0,
+        "z": 1
       },
       "holes": [
         {
           "id": 1,
-          "diameter": 4.79,
+          "diameter": 5.39,
           "position": {
-            "x": -6.99,
-            "y": 11.62,
-            "z": 8.59
+            "x": 14.94,
+            "y": -9.62,
+            "z": -5.93
           },
           "rotation": {
-            "x": 90,
+            "x": 0,
             "y": 0,
-            "z": 0
+            "z": -180
           }
         },
         {
           "id": 2,
-          "diameter": 4.7,
+          "diameter": 5.29,
           "position": {
-            "x": 6.99,
-            "y": 11.62,
-            "z": 8.55
+            "x": -15.01,
+            "y": -9.59,
+            "z": -5.93
           },
           "rotation": {
-            "x": 90,
+            "x": 0,
             "y": 0,
-            "z": 0
+            "z": -180
           }
         }
       ],
@@ -41,7 +41,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 13.97,
+          "distance": 29.95,
           "axis": "X"
         }
       ]
@@ -51,46 +51,39 @@
       "normal": {
         "x": 0,
         "y": 0,
-        "z": 1
+        "z": -1
       },
       "holes": [
         {
           "id": 1,
-          "diameter": 5.3,
+          "diameter": 7.66,
           "position": {
-            "x": 15,
-            "y": -9.61,
-            "z": -5.93
+            "x": -15.07,
+            "y": -9.5,
+            "z": -13.93
           },
           "rotation": {
-            "x": 0,
+            "x": -180,
             "y": 0,
-            "z": -180
+            "z": 0
           }
         },
         {
           "id": 2,
-          "diameter": 5.27,
+          "diameter": 7.63,
           "position": {
-            "x": -15.03,
-            "y": -9.61,
-            "z": -5.93
+            "x": 14.86,
+            "y": -9.65,
+            "z": -13.93
           },
           "rotation": {
-            "x": 0,
+            "x": -180,
             "y": 0,
-            "z": -180
+            "z": 0
           }
         }
       ],
-      "alignedDistances": [
-        {
-          "from": 1,
-          "to": 2,
-          "distance": 30.02,
-          "axis": "X"
-        }
-      ]
+      "alignedDistances": []
     }
   ],
   "orientationFace": {
@@ -105,6 +98,7 @@
       "z": 0
     }
   },
+  "slideFaces": [],
   "totalHoles": 4,
-  "timestamp": "2024-12-19T17:25:50.032Z"
+  "timestamp": "2024-12-30T19:56:03.912Z"
 }
