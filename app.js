@@ -1671,6 +1671,12 @@ async function attachModelAtPoint(modelPath) {
 
             // Add to appropriate parent
             const parentModel = selectedPoint.userData.parentModel || mainModel;
+            console.log("Attaching to parent:", {
+                isSecondary: !!selectedPoint.userData.parentModel,
+                parentModel: parentModel,
+                parentInScene: mainModel.getObjectById(parentModel.id) !== undefined,
+                pointData: selectedPoint.userData
+            });            
             parentModel.add(mesh);
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
@@ -1755,98 +1761,95 @@ function onDoubleClick(event) {
 
     if (intersects.length > 0) {
         let targetMesh = intersects[0].object;
-        while (targetMesh.parent && targetMesh.parent !== mainModel) {
+        
+        // Find the actual model that contains the patterns
+        while (targetMesh.parent && targetMesh.parent !== mainModel && !targetMesh.userData?.patternMapping) {
             targetMesh = targetMesh.parent;
         }
 
+        // Find the specific attachment point for this model
+        let targetPoint = null;
         for (let [point, model] of attachedModels) {
             if (model === targetMesh) {
-                console.log('Before removal - Model data:', model.userData);
-                debugPatternTracking();
-
-                point.visible = true;
-                mainModel.remove(model);
-
-                // Remove position controls
-                if (model.userData.positionControls) {
-                    model.userData.positionControls.forEach(arrow => {
-                        mainModel.remove(arrow);
-                    });
-                }
-                // Clean up both patterns
-                if (model.userData.patternMapping) {
-                    const basePatterns = usedHolePatterns.get('heromedir/base/UniversalBase.stl');
-                    if (basePatterns) {
-                        basePatterns.delete(model.userData.patternMapping.baseFaceId);
-                    }
-
-                    const attachmentPatterns = usedHolePatterns.get(model.userData.modelPath);
-                    if (attachmentPatterns) {
-                        attachmentPatterns.delete(model.userData.patternMapping.attachmentFaceId);
-                    }
-                }
-                // Get the pattern mapping from the model's userData
-                const patternMapping = model.userData.patternMapping;
-                if (patternMapping) {
-                    console.log('Removing patterns using mapping:', patternMapping);
-
-                    // Remove base model pattern
-                    const basePatterns = usedHolePatterns.get(patternMapping.baseModelPath);
-                    if (basePatterns) {
-                        console.log('Removing base face pattern:', patternMapping.baseFaceId);
-                        basePatterns.delete(patternMapping.baseFaceId);
-                        if (basePatterns.size === 0) {
-                            usedHolePatterns.delete(patternMapping.baseModelPath);
-                        }
-                    }
-
-                    // Remove attachment model pattern
-                    const attachmentPatterns = usedHolePatterns.get(patternMapping.attachmentModelPath);
-                    if (attachmentPatterns) {
-                        console.log('Removing attachment face pattern:', patternMapping.attachmentFaceId);
-                        attachmentPatterns.delete(patternMapping.attachmentFaceId);
-                        if (attachmentPatterns.size === 0) {
-                            usedHolePatterns.delete(patternMapping.attachmentModelPath);
-                        }
-                    }
-                } else {
-                    console.warn('No pattern mapping found on model:', model.userData);
-                }
-                // First find any models that were attached to this one
-                attachedModels.forEach((attachedModel, attachPoint) => {
-                    if (attachPoint.userData.parentModel === model) {
-                        // Clean up this child model's patterns
-                        if (attachedModel.userData.patternMapping) {
-                            // Clean up child's pattern on itself
-                            const childPatterns = usedHolePatterns.get(attachedModel.userData.modelPath);
-                            if (childPatterns) {
-                                childPatterns.delete(attachedModel.userData.patternMapping.attachmentFaceId);
-                                if (childPatterns.size === 0) {
-                                    usedHolePatterns.delete(attachedModel.userData.modelPath);
-                                }
-                            }
-
-                            // Clean up child's pattern on parent (the model being removed)
-                            const parentPatterns = usedHolePatterns.get(model.userData.modelPath);
-                            if (parentPatterns) {
-                                parentPatterns.delete(attachedModel.userData.patternMapping.baseFaceId);
-                                if (parentPatterns.size === 0) {
-                                    usedHolePatterns.delete(model.userData.modelPath);
-                                }
-                            }
-                        }
-                        // Remove the model and its point
-                        mainModel.remove(attachedModel);
-                        attachedModels.delete(attachPoint);
-                    }
-                });
-
-                attachedModels.delete(point);
-                
-                console.log('After removal - Pattern state:');
-                debugPatternTracking();
+                targetPoint = point;
                 break;
             }
+        }
+
+        if (targetPoint) {
+            console.log('Processing model:', targetMesh.userData.modelPath);
+
+            // Clean up patterns from this model AND its parent's used face
+            if (targetMesh.userData.patternMapping) {
+                // Clear this model's used pattern
+                if (usedHolePatterns.has(targetMesh.userData.patternMapping.attachmentModelPath)) {
+                    usedHolePatterns.get(targetMesh.userData.patternMapping.attachmentModelPath)
+                        .delete(targetMesh.userData.patternMapping.attachmentFaceId);
+                }
+                // Clear the parent's used pattern that this model was attached to
+                if (usedHolePatterns.has(targetMesh.userData.patternMapping.baseModelPath)) {
+                    usedHolePatterns.get(targetMesh.userData.patternMapping.baseModelPath)
+                        .delete(targetMesh.userData.patternMapping.baseFaceId);
+                }
+            }
+
+            // Remove the model from the scene
+            targetMesh.parent.remove(targetMesh);
+            targetPoint.visible = true;
+            attachedModels.delete(targetPoint);
+
+            // Remove child models that are directly attached to this model
+            const childrenToRemove = [];
+            attachedModels.forEach((childModel, childPoint) => {
+                if (childPoint.userData.parentModel === targetMesh) {
+                    childrenToRemove.push({ model: childModel, point: childPoint });
+                }
+            });
+
+            // Remove each child model and clean up
+            childrenToRemove.forEach(({ model: childModel, point: childPoint }) => {
+                console.log('Removing child model:', childModel.userData.modelPath);
+                
+                // Remove from parent model (the actual mesh)
+                childModel.parent.remove(childModel);
+                
+                // Remove position controls if they exist
+                if (childModel.userData.positionControls) {
+                    childModel.userData.positionControls.forEach(arrow => {
+                        if (arrow.parent) arrow.parent.remove(arrow);
+                    });
+                }
+                
+                // Clean up patterns
+                if (childModel.userData.patternMapping) {
+                    if (usedHolePatterns.has(childModel.userData.patternMapping.baseModelPath)) {
+                        usedHolePatterns.get(childModel.userData.patternMapping.baseModelPath)
+                            .delete(childModel.userData.patternMapping.baseFaceId);
+                    }
+                    if (usedHolePatterns.has(childModel.userData.patternMapping.attachmentModelPath)) {
+                        usedHolePatterns.get(childModel.userData.patternMapping.attachmentModelPath)
+                            .delete(childModel.userData.patternMapping.attachmentFaceId);
+                    }
+                }
+                
+                // Reset attachment point visibility
+                childPoint.visible = true;
+                
+                // Remove from tracking map
+                attachedModels.delete(childPoint);
+                
+                // Dispose of geometries and materials
+                if (childModel.geometry) childModel.geometry.dispose();
+                if (childModel.material) {
+                    if (Array.isArray(childModel.material)) {
+                        childModel.material.forEach(mat => mat.dispose());
+                    } else {
+                        childModel.material.dispose();
+                    }
+                }
+            });
+            
+            cleanupOrphanedPatterns();
         }
     }
 }
@@ -2160,7 +2163,6 @@ function isHolePatternUsed(modelPath, face) {
 async function createSecondaryAttachmentPoints(model) {
     const geometryData = await loadGeometryData(model.userData.modelPath);
     if (!geometryData?.faces) return;
-
     const sphereGeometry = new THREE.SphereGeometry(3.0, 32, 32);
     const sphereMaterial = new THREE.MeshPhongMaterial({
         color: 0x800080,
@@ -2203,7 +2205,11 @@ async function createSecondaryAttachmentPoints(model) {
             parentModel: model,
             faceId: face.faceId
         };
-        
+        console.log("Creating secondary points for:", {
+            modelPath: model.userData.modelPath,
+            type: model.userData.attachmentType,
+            availableFaces: availableFaces.length
+        });
         model.add(point);
         attachmentPoints.push(point);
     });
@@ -2256,5 +2262,40 @@ function resetUIState() {
     if (dropdown) dropdown.value = '';
     document.getElementById('modelSelect').style.display = 'none';
     selectedPoint = null;
+}
+function cleanupOrphanedPatterns() {
+    // Get list of models that are actually in the scene by traversing mainModel
+    const activeModelPaths = new Set();
+    mainModel.traverse((obj) => {
+        if (obj.userData?.modelPath) {
+            activeModelPaths.add(obj.userData.modelPath);
+        }
+    });
+
+    console.log("Active models in scene:", Array.from(activeModelPaths));
+
+    // Clean up pattern data for models that no longer exist in scene
+    usedHolePatterns.forEach((patterns, modelPath) => {
+        if (!activeModelPaths.has(modelPath)) {
+            console.log(`Cleaning up hole patterns for removed model: ${modelPath}`);
+            usedHolePatterns.delete(modelPath);
+        }
+    });
+
+    // Clean up slide patterns too
+    usedPatterns.forEach((patterns, modelPath) => {
+        if (!activeModelPaths.has(modelPath)) {
+            console.log(`Cleaning up slide patterns for removed model: ${modelPath}`);
+            usedPatterns.delete(modelPath);
+        }
+    });
+
+    // Also cleanup attachedModels Map for any models not in scene
+    for (let [point, model] of attachedModels) {
+        if (!activeModelPaths.has(model.userData.modelPath)) {
+            console.log(`Cleaning up attachedModels entry for removed model: ${model.userData.modelPath}`);
+            attachedModels.delete(point);
+        }
+    }
 }
 init();
