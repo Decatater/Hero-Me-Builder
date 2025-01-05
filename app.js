@@ -166,13 +166,9 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     console.log('\n=== Finding Matches Between Faces ===');
     console.log('Base face ID:', baseFace.faceId);
     console.log('Base face holes:', baseFace.holes.length);
-    console.log('Available attachment faces:', attachmentFaces.map(face => ({
-        id: face.faceId,
-        holes: face.holes.length
-    })));
-    console.log('Attachment type:', attachmentType);
     console.log('Current model path:', window.currentAttachmentPath);
     debugPatternTracking();
+
     let bestMatch = null;
     let maxScore = 0;
     let bestTransform = null;
@@ -184,12 +180,8 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
 
     // Filter out already used faces
     const availableFaces = facesToCheck.filter(face => 
-        !isHolePatternUsed('currentAttachmentPath', face));
-    
-        console.log('Faces after filtering used ones:', availableFaces.map(face => ({
-            id: face.faceId,
-            holes: face.holes.length
-        })));
+        !isHolePatternUsed(window.currentAttachmentPath, face));
+
     for (const attachFace of availableFaces) {
         // Try different rotation combinations
         const rotations = [
@@ -204,11 +196,9 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
         ];
 
         for (const rotation of rotations) {
-            // Create temporary quaternion for this rotation
             const tempQuat = new THREE.Quaternion();
             tempQuat.setFromEuler(new THREE.Euler(rotation.x, rotation.y, rotation.z));
 
-            // Rotate the holes for comparison
             const rotatedHoles = attachFace.holes.map(hole => {
                 const pos = new THREE.Vector3(hole.position.x, hole.position.y, hole.position.z);
                 pos.applyQuaternion(tempQuat);
@@ -227,10 +217,7 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
                 holes: rotatedHoles
             };
 
-            // Compare patterns with this rotation
             const score = compareHolePatterns(baseFace, rotatedFace);
-            console.log(`Rotation (${rotation.x}, ${rotation.y}, ${rotation.z}) score: ${score}`);
-
             if (score > maxScore) {
                 maxScore = score;
                 bestMatch = attachFace;
@@ -242,14 +229,28 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
         }
     }
 
-    // More lenient threshold since we're only looking at distances
     if (bestMatch && bestTransform && maxScore > 0.6) {
         bestMatch.bestTransform = bestTransform;
         console.log('Best match found with score:', maxScore);
+
+        // Create mapping objects for both the mesh and the pattern tracking
+        const patternMapping = {
+            baseFaceId: baseFace.faceId,
+            attachmentFaceId: bestMatch.faceId,
+            baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath || 'heromedir/base/UniversalBase.stl',
+            attachmentModelPath: window.currentAttachmentPath
+        };
+
+        // Store the mapping on the face for transfer to the mesh
+        bestMatch.patternMapping = patternMapping;
+
+        // Mark patterns as used
+        markPatternAsUsed(patternMapping.baseModelPath, { faceId: patternMapping.baseFaceId });
+        markPatternAsUsed(patternMapping.attachmentModelPath, { faceId: patternMapping.attachmentFaceId });
+
+        console.log('Created pattern mapping:', patternMapping);
+        debugPatternTracking();
         
-        // Mark both faces as used - using actual modelPath instead of placeholder
-        markPatternAsUsed('heromedir/base/UniversalBase.stl', { faceId: baseFace.faceId });
-        markPatternAsUsed(window.currentAttachmentPath || 'unknown', { faceId: bestMatch.faceId });
         return bestMatch;
     }
     return null;
@@ -1567,7 +1568,7 @@ async function attachModelAtPoint(modelPath) {
                     console.error('No matching face pattern found');
                     return;
                 }
-
+                mesh.userData.patternMapping = matchingFace.patternMapping;
                 const baseHoles = closestFace.holes;
                 const attachHoles = matchingFace.holes;
 
@@ -1738,7 +1739,6 @@ function onWindowResize() {
 function onDoubleClick(event) {
     raycaster.setFromCamera(mouse, camera);
     
-    // Check for arrow intersections first
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
@@ -1746,14 +1746,10 @@ function onDoubleClick(event) {
         }
     });
 
-    // If we hit an arrow, don't process the double click
     const arrowIntersects = raycaster.intersectObjects(allArrows)
         .filter(hit => hit.object.userData.type === 'positionControl');
-    if (arrowIntersects.length > 0) {
-        return;
-    }
+    if (arrowIntersects.length > 0) return;
     
-    // Original model removal logic
     const attachedModelArray = Array.from(attachedModels.values());
     const intersects = raycaster.intersectObjects(attachedModelArray, true);
 
@@ -1765,34 +1761,90 @@ function onDoubleClick(event) {
 
         for (let [point, model] of attachedModels) {
             if (model === targetMesh) {
+                console.log('Before removal - Model data:', model.userData);
+                debugPatternTracking();
+
                 point.visible = true;
                 mainModel.remove(model);
+
+                // Remove position controls
                 if (model.userData.positionControls) {
                     model.userData.positionControls.forEach(arrow => {
                         mainModel.remove(arrow);
                     });
                 }
+                // Clean up both patterns
+                if (model.userData.patternMapping) {
+                    const basePatterns = usedHolePatterns.get('heromedir/base/UniversalBase.stl');
+                    if (basePatterns) {
+                        basePatterns.delete(model.userData.patternMapping.baseFaceId);
+                    }
 
-                // Clear corresponding patterns
-                if (model.userData.usedHoles) {
-                    const baseHolePatterns = usedHolePatterns.get('heromedir/base/UniversalBase.stl');
-                    if (baseHolePatterns) {
-                        model.userData.usedHoles.forEach(id => baseHolePatterns.delete(id));
+                    const attachmentPatterns = usedHolePatterns.get(model.userData.modelPath);
+                    if (attachmentPatterns) {
+                        attachmentPatterns.delete(model.userData.patternMapping.attachmentFaceId);
                     }
                 }
-                
-                if (model.userData.usedSlides) {
-                    const baseSlidePatterns = usedPatterns.get('heromedir/base/UniversalBase.stl');
-                    if (baseSlidePatterns?.slides) {
-                        model.userData.usedSlides.forEach(id => baseSlidePatterns.slides.delete(id));
-                    }
-                }
+                // Get the pattern mapping from the model's userData
+                const patternMapping = model.userData.patternMapping;
+                if (patternMapping) {
+                    console.log('Removing patterns using mapping:', patternMapping);
 
-                // Clear model's patterns
-                usedHolePatterns.delete(model.userData.modelPath);
-                usedPatterns.delete(model.userData.modelPath);
+                    // Remove base model pattern
+                    const basePatterns = usedHolePatterns.get(patternMapping.baseModelPath);
+                    if (basePatterns) {
+                        console.log('Removing base face pattern:', patternMapping.baseFaceId);
+                        basePatterns.delete(patternMapping.baseFaceId);
+                        if (basePatterns.size === 0) {
+                            usedHolePatterns.delete(patternMapping.baseModelPath);
+                        }
+                    }
+
+                    // Remove attachment model pattern
+                    const attachmentPatterns = usedHolePatterns.get(patternMapping.attachmentModelPath);
+                    if (attachmentPatterns) {
+                        console.log('Removing attachment face pattern:', patternMapping.attachmentFaceId);
+                        attachmentPatterns.delete(patternMapping.attachmentFaceId);
+                        if (attachmentPatterns.size === 0) {
+                            usedHolePatterns.delete(patternMapping.attachmentModelPath);
+                        }
+                    }
+                } else {
+                    console.warn('No pattern mapping found on model:', model.userData);
+                }
+                // First find any models that were attached to this one
+                attachedModels.forEach((attachedModel, attachPoint) => {
+                    if (attachPoint.userData.parentModel === model) {
+                        // Clean up this child model's patterns
+                        if (attachedModel.userData.patternMapping) {
+                            // Clean up child's pattern on itself
+                            const childPatterns = usedHolePatterns.get(attachedModel.userData.modelPath);
+                            if (childPatterns) {
+                                childPatterns.delete(attachedModel.userData.patternMapping.attachmentFaceId);
+                                if (childPatterns.size === 0) {
+                                    usedHolePatterns.delete(attachedModel.userData.modelPath);
+                                }
+                            }
+
+                            // Clean up child's pattern on parent (the model being removed)
+                            const parentPatterns = usedHolePatterns.get(model.userData.modelPath);
+                            if (parentPatterns) {
+                                parentPatterns.delete(attachedModel.userData.patternMapping.baseFaceId);
+                                if (parentPatterns.size === 0) {
+                                    usedHolePatterns.delete(model.userData.modelPath);
+                                }
+                            }
+                        }
+                        // Remove the model and its point
+                        mainModel.remove(attachedModel);
+                        attachedModels.delete(attachPoint);
+                    }
+                });
 
                 attachedModels.delete(point);
+                
+                console.log('After removal - Pattern state:');
+                debugPatternTracking();
                 break;
             }
         }
