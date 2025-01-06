@@ -1360,7 +1360,8 @@ async function attachModelAtPoint(modelPath) {
             };
 
             // Store used patterns based on attachment type
-            if (selectedPoint.userData.attachmentType === 'partcooling') {
+            if (selectedPoint.userData.attachmentType === 'partcooling' || 
+                selectedPoint.userData.attachmentType === 'probe') {
                 mesh.userData.usedSlides = new Set([...(usedPatterns.get(baseModelPath)?.slides || [])]);
             } else {
                 mesh.userData.usedHoles = new Set([...(usedHolePatterns.get(baseModelPath) || [])]);
@@ -1386,6 +1387,7 @@ async function attachModelAtPoint(modelPath) {
             
                     console.log('Available base slide faces:', availableBaseFaces.length);
                     console.log('Available attachment slide faces:', availableAttachFaces.length);
+                    
                     if (isDualDuct) {
                         markPatternAsUsed(baseModelPath, { groupIndex: 0 });
                         markPatternAsUsed(baseModelPath, { groupIndex: 1 });
@@ -1455,13 +1457,13 @@ async function attachModelAtPoint(modelPath) {
 
                         const baseGroup = isRightSide ? baseGeometryData.slideFaces[0] : baseGeometryData.slideFaces[1];
                         const attachGroup = attachGeometryData.slideFaces[0];
-             
+
                         // First align orientations to sky
                         const upVector = new THREE.Vector3(0, 0, 1);
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, upVector);
                         mesh.quaternion.copy(orientQuat);
-             
+
                         // Then align slide face normals
                         const baseNormal = new THREE.Vector3(
                             baseGroup.faces[0].normal.x,
@@ -1473,11 +1475,11 @@ async function attachModelAtPoint(modelPath) {
                             attachGroup.faces[0].normal.y,
                             attachGroup.faces[0].normal.z
                         ).applyQuaternion(orientQuat);
-             
+
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.premultiply(normalQuat);
-             
+
                         // Calculate centers for positioning
                         const baseCenter = new THREE.Vector3(
                             (baseGroup.faces[0].position.x + baseGroup.faces[1].position.x) / 2,
@@ -1489,24 +1491,26 @@ async function attachModelAtPoint(modelPath) {
                             (attachGroup.faces[0].position.y + attachGroup.faces[1].position.y) / 2,
                             (attachGroup.faces[0].position.z + attachGroup.faces[1].position.z) / 2
                         );
-             
+
                         // Position using centers
                         const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                         const offset = baseCenter.clone().sub(transformedAttachCenter);
-             
-                        // Check if right side needs 180° rotation
+
+                        // Check if right side needs 180° rotation - AFTER all normals are defined
                         if (isRightSide) {
                             const angle = attachNormal.angleTo(baseNormal);
-                            if (angle < Math.PI/2) {
+                            if (angle < Math.PI / 2) {
                                 const rotationQuat = new THREE.Quaternion().setFromAxisAngle(
-                                    new THREE.Vector3(0, 0, 1), 
+                                    new THREE.Vector3(0, 0, 1),
                                     Math.PI
                                 );
                                 mesh.quaternion.premultiply(rotationQuat);
                             }
                         }
-                        
+
                         mesh.position.copy(offset);
+
+                        
                     }
                 }
             } else {
@@ -1526,6 +1530,66 @@ async function attachModelAtPoint(modelPath) {
                     closestFace = baseGeometryData.faces.find(face => face.faceId === selectedPoint.userData.faceId);
                 } else {
                     // Find appropriate face based on attachment type
+                    if (selectedPoint.userData.attachmentType === 'probe') {
+                        if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
+                            window.currentAttachmentPath = modelPath;
+                            
+                            // We know probes only have single slide faces
+                            const baseGroupIndex = 0;  // For probes, we always use the first slide face group
+                            markPatternAsUsed(baseModelPath, { groupIndex: baseGroupIndex });
+                            markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
+                    
+                            const baseGroup = baseGeometryData.slideFaces[0];
+                            const attachGroup = attachGeometryData.slideFaces[0];
+                    
+                            // First align to sky
+                            const upVector = new THREE.Vector3(0, 0, 1);
+                            const orientQuat = new THREE.Quaternion();
+                            orientQuat.setFromUnitVectors(attachOrientation, upVector);
+                            mesh.quaternion.copy(orientQuat);
+                    
+                            // Then align slide faces to face each other
+                            const baseNormal = new THREE.Vector3(
+                                baseGroup.faces[0].normal.x,
+                                baseGroup.faces[0].normal.y,
+                                baseGroup.faces[0].normal.z
+                            );
+                            const attachNormal = new THREE.Vector3(
+                                attachGroup.faces[0].normal.x,
+                                attachGroup.faces[0].normal.y,
+                                attachGroup.faces[0].normal.z
+                            ).applyQuaternion(orientQuat);
+                    
+                            const normalQuat = new THREE.Quaternion();
+                            normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                            mesh.quaternion.premultiply(normalQuat);
+                    
+                            // Calculate centers for positioning
+                            const baseCenter = new THREE.Vector3(
+                                (baseGroup.faces[0].position.x + baseGroup.faces[1].position.x) / 2,
+                                (baseGroup.faces[0].position.y + baseGroup.faces[1].position.y) / 2,
+                                (baseGroup.faces[0].position.z + baseGroup.faces[1].position.z) / 2
+                            );
+                            const attachCenter = new THREE.Vector3(
+                                (attachGroup.faces[0].position.x + attachGroup.faces[1].position.x) / 2,
+                                (attachGroup.faces[0].position.y + attachGroup.faces[1].position.y) / 2,
+                                (attachGroup.faces[0].position.z + attachGroup.faces[1].position.z) / 2
+                            );
+                    
+                            // Position using centers
+                            const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
+                            const offset = baseCenter.clone().sub(transformedAttachCenter);
+                            mesh.position.copy(offset);
+                    
+                            // Apply parent model transform
+                            if (selectedPoint.userData.parentModel) {
+                                mesh.position.applyMatrix4(selectedPoint.userData.parentModel.matrixWorld);
+                                const parentQuat = new THREE.Quaternion();
+                                selectedPoint.userData.parentModel.getWorldQuaternion(parentQuat);
+                                mesh.quaternion.premultiply(parentQuat);
+                            }
+                        }
+                    }
                     if (selectedPoint.userData.attachmentType === 'gantry' || 
                         selectedPoint.userData.attachmentType === 'gantryclip') {
                         const availableFaces = baseGeometryData.faces.filter(face => 
@@ -1643,8 +1707,7 @@ async function attachModelAtPoint(modelPath) {
                             );
                             mesh.quaternion.premultiply(rotQuat);
                         }
-                    } else if (selectedPoint.userData.attachmentType === 'probe' || 
-                             selectedPoint.userData.attachmentType === 'adxl') {
+                    } else if (selectedPoint.userData.attachmentType === 'adxl') {
                         // Use standard alignment for secondary attachments
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
@@ -1682,7 +1745,8 @@ async function attachModelAtPoint(modelPath) {
             selectedPoint.visible = false;
 
             // Add position control arrows for part cooling
-            if (selectedPoint.userData.attachmentType === 'partcooling') {
+            if (selectedPoint.userData.attachmentType === 'partcooling' || 
+                selectedPoint.userData.attachmentType === 'probe') {
                 const positionArrows = createPositionArrows(mesh);
                 mesh.userData.positionControls = positionArrows;
                 positionArrows.forEach(arrow => mainModel.add(arrow));
