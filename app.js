@@ -519,46 +519,173 @@ function init() {
     // Start animation loop
     animate();
 }
+function visualizeGeometryFeatures(geometryData, parentMesh) {
+    // Clean up any existing visualizations
+    parentMesh.children = parentMesh.children.filter(child => 
+        !child.userData.isVisualization
+    );
+
+    // Get parent model's world transform if it exists
+    let parentWorldMatrix = new THREE.Matrix4();
+    let parentWorldQuaternion = new THREE.Quaternion();
+    if (parentMesh.userData.parentModel) {
+        parentWorldMatrix = parentMesh.userData.parentModel.matrixWorld;
+        parentMesh.userData.parentModel.getWorldQuaternion(parentWorldQuaternion);
+    }
+
+    // Visualize holes
+    if (geometryData.faces) {
+        const holeGeometry = new THREE.CylinderGeometry(2, 2, 10, 16);
+        const colors = [
+            0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 
+            0xffff00, 0x00ffff, 0xff8000, 0x8000ff,
+            0x0080ff, 0xff0080
+        ];
+
+        geometryData.faces.forEach((face, faceIndex) => {
+            const holeMaterial = new THREE.MeshPhongMaterial({
+                color: colors[faceIndex % colors.length],
+                transparent: true,
+                opacity: 0.6
+            });
+
+            face.holes?.forEach(hole => {
+                const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial);
+                
+                // Position hole
+                holeMesh.position.set(
+                    hole.position.x,
+                    hole.position.y,
+                    hole.position.z
+                );
+
+                // Align with face normal
+                const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+                holeMesh.quaternion.setFromUnitVectors(
+                    new THREE.Vector3(0, 1, 0),
+                    normal
+                );
+
+                // For secondary attachments, apply parent transforms
+                if (parentMesh.userData.parentModel) {
+                    holeMesh.position.applyMatrix4(parentWorldMatrix);
+                    holeMesh.quaternion.premultiply(parentWorldQuaternion);
+                }
+
+                // Store metadata
+                holeMesh.userData = {
+                    isVisualization: true,
+                    type: 'hole',
+                    holeData: hole,
+                    faceData: face,
+                    groupIndex: faceIndex,
+                    parentModel: parentMesh
+                };
+
+                parentMesh.add(holeMesh);
+            });
+        });
+    }
+
+    // Visualize slide faces
+    if (geometryData.slideFaces?.length) {
+        const slideMaterial = new THREE.MeshPhongMaterial({
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+            emissive: 0x331100,
+            emissiveIntensity: 0.3
+        });
+
+        geometryData.slideFaces.forEach((group, groupIndex) => {
+            group.faces?.forEach((face, faceIndex) => {
+                const planeGeometry = new THREE.PlaneGeometry(
+                    face.dimensions.width,
+                    face.dimensions.height
+                );
+
+                // Center geometry
+                planeGeometry.translate(
+                    face.dimensions.center2D.x,
+                    face.dimensions.center2D.y,
+                    0
+                );
+
+                const slideMesh = new THREE.Mesh(planeGeometry, slideMaterial.clone());
+
+                // Position and orient slide face
+                const offsetDistance = 0.1;
+                const normalVector = new THREE.Vector3(
+                    face.normal.x,
+                    face.normal.y,
+                    face.normal.z
+                ).normalize();
+
+                slideMesh.position.set(
+                    face.position.x + (normalVector.x * offsetDistance),
+                    face.position.y + (normalVector.y * offsetDistance),
+                    face.position.z + (normalVector.z * offsetDistance)
+                );
+
+                // Apply rotation
+                const euler = new THREE.Euler(
+                    face.rotation.x * Math.PI / 180,
+                    face.rotation.y * Math.PI / 180,
+                    face.rotation.z * Math.PI / 180,
+                    'XYZ'
+                );
+                slideMesh.setRotationFromEuler(euler);
+
+                // For secondary attachments, apply parent transforms
+                if (parentMesh.userData.parentModel) {
+                    slideMesh.position.applyMatrix4(parentWorldMatrix);
+                    slideMesh.quaternion.premultiply(parentWorldQuaternion);
+                }
+
+                // Store metadata
+                slideMesh.userData = {
+                    isVisualization: true,
+                    type: 'slide',
+                    slideGroup: groupIndex,
+                    faceIndex: faceIndex,
+                    dimensions: face.dimensions,
+                    parentModel: parentMesh
+                };
+
+                parentMesh.add(slideMesh);
+            });
+        });
+    }
+}
+
 function visualizeHoles(geometryData, parentMesh) {
-    // Array of distinct colors for different faces
     const colors = [
-        0xff0000, // red
-        0x00ff00, // green
-        0x0000ff, // blue
-        0xff00ff, // magenta
-        0xffff00, // yellow
-        0x00ffff, // cyan
-        0xff8000, // orange
-        0x8000ff, // purple
-        0x0080ff, // light blue
-        0xff0080  // pink
+        0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 
+        0xffff00, 0x00ffff, 0xff8000, 0x8000ff,
+        0x0080ff, 0xff0080
     ];
 
     const holeGeometry = new THREE.CylinderGeometry(2, 2, 10, 16);
 
-    geometryData.faces.forEach((face, faceIndex) => {
-        // Create a material with unique color for this face
+    geometryData.faces?.forEach((face, faceIndex) => {
         const holeMaterial = new THREE.MeshPhongMaterial({
             color: colors[faceIndex % colors.length],
             transparent: true,
             opacity: 0.6
         });
 
-        console.log(`Face ${faceIndex}:`);
-        console.log('Normal:', face.normal);
-        console.log('Number of holes:', face.holes.length);
-
-        face.holes.forEach(hole => {
+        face.holes?.forEach(hole => {
             const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial);
-
-            // Position the hole
+            
+            // Position hole
             holeMesh.position.set(
                 hole.position.x,
                 hole.position.y,
                 hole.position.z
             );
 
-            // Only do the normal alignment, no extra rotation
+            // Align with face normal
             const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
             holeMesh.quaternion.setFromUnitVectors(
                 new THREE.Vector3(0, 1, 0),
@@ -569,36 +696,15 @@ function visualizeHoles(geometryData, parentMesh) {
             holeMesh.userData.holeData = hole;
             holeMesh.userData.faceData = face;
             holeMesh.userData.groupIndex = faceIndex;
+            holeMesh.userData.parentModel = parentMesh;
 
             parentMesh.add(holeMesh);
-
-            // Log hole position
-            console.log('Hole position:', hole.position);
         });
-
-        // Log distances between holes in this group if there are multiple holes
-        if (face.holes.length > 1) {
-            for (let i = 0; i < face.holes.length; i++) {
-                for (let j = i + 1; j < face.holes.length; j++) {
-                    const h1 = face.holes[i];
-                    const h2 = face.holes[j];
-                    const distance = Math.sqrt(
-                        Math.pow(h1.position.x - h2.position.x, 2) +
-                        Math.pow(h1.position.y - h2.position.y, 2) +
-                        Math.pow(h1.position.z - h2.position.z, 2)
-                    );
-                    console.log(`Distance between hole ${i} and ${j}: ${distance.toFixed(2)}mm`);
-                }
-            }
-        }
-        console.log('-------------------');
     });
 }
+
 function visualizeSlideFaces(geometryData, parentMesh) {
-    if (!geometryData.slideFaces || !Array.isArray(geometryData.slideFaces)) {
-        console.log('No slide faces found in geometry data');
-        return;
-    }
+    if (!geometryData.slideFaces?.length) return;
 
     const slideMaterial = new THREE.MeshPhongMaterial({
         color: 0xff4400,
@@ -610,19 +716,13 @@ function visualizeSlideFaces(geometryData, parentMesh) {
     });
 
     geometryData.slideFaces.forEach((group, groupIndex) => {
-        console.log(`Processing slide face group ${groupIndex + 1}`);
-
-        group.faces.forEach((face, faceIndex) => {
-            console.log(`Face ${faceIndex} dimensions:`, face.dimensions);
-            console.log(`Face ${faceIndex} position:`, face.position);
-            console.log(`Face ${faceIndex} rotation:`, face.rotation);
-
+        group.faces?.forEach((face, faceIndex) => {
             const planeGeometry = new THREE.PlaneGeometry(
                 face.dimensions.width,
                 face.dimensions.height
             );
 
-            // Center the geometry on its origin point
+            // Center geometry
             planeGeometry.translate(
                 face.dimensions.center2D.x,
                 face.dimensions.center2D.y,
@@ -631,25 +731,21 @@ function visualizeSlideFaces(geometryData, parentMesh) {
 
             const slideMesh = new THREE.Mesh(planeGeometry, slideMaterial.clone());
 
-            // Position the face
-            slideMesh.position.set(
-                face.position.x,
-                face.position.y,
-                face.position.z
-            );
-            // Create a small offset vector based on the face normal
-            const offsetDistance = 0.1; // 0.1mm offset
+            // Apply small offset based on normal
+            const offsetDistance = 0.1;
             const normalVector = new THREE.Vector3(
                 face.normal.x,
                 face.normal.y,
                 face.normal.z
             ).normalize();
+
             slideMesh.position.set(
                 face.position.x + (normalVector.x * offsetDistance),
                 face.position.y + (normalVector.y * offsetDistance),
                 face.position.z + (normalVector.z * offsetDistance)
             );
-            // Apply rotation in degrees to radians
+
+            // Apply rotation
             const euler = new THREE.Euler(
                 face.rotation.x * Math.PI / 180,
                 face.rotation.y * Math.PI / 180,
@@ -662,12 +758,9 @@ function visualizeSlideFaces(geometryData, parentMesh) {
             slideMesh.userData.slideGroup = groupIndex;
             slideMesh.userData.faceIndex = faceIndex;
             slideMesh.userData.dimensions = face.dimensions;
+            slideMesh.userData.parentModel = parentMesh;
 
             parentMesh.add(slideMesh);
-
-            console.log(`Added slide face ${faceIndex} to group ${groupIndex}`);
-            console.log('Final mesh position:', slideMesh.position);
-            console.log('Final mesh rotation:', slideMesh.rotation);
         });
     });
 }
@@ -1518,19 +1611,18 @@ async function attachModelAtPoint(modelPath) {
                 const baseGroupIndex = 0;
                 markPatternAsUsed(baseModelPath, { groupIndex: baseGroupIndex });
                 markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
-            
+             
                 const baseGroup = baseGeometryData.slideFaces[0];
                 const attachGroup = attachGeometryData.slideFaces[0];
                 const baseFace = baseGroup.faces[0];
                 const attachFace = attachGroup.faces[0];
-            
-                // Orient upward first
-                const upVector = new THREE.Vector3(0, 0, 1);
-                const orientQuat = new THREE.Quaternion();
-                orientQuat.setFromUnitVectors(attachOrientation, upVector);
-                mesh.quaternion.copy(orientQuat);
-            
-                // Align slide face normals
+             
+                // First rotate -90° around X to align slide faces
+                const alignQuat = new THREE.Quaternion();
+                alignQuat.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2);
+                mesh.quaternion.copy(alignQuat);
+             
+                // Then align normals to face each other
                 const baseNormal = new THREE.Vector3(
                     baseFace.normal.x,
                     baseFace.normal.y, 
@@ -1540,27 +1632,43 @@ async function attachModelAtPoint(modelPath) {
                     attachFace.normal.x,
                     attachFace.normal.y,
                     attachFace.normal.z
-                ).applyQuaternion(orientQuat);
-            
+                ).applyQuaternion(alignQuat);
+             
                 const normalQuat = new THREE.Quaternion();
                 normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                 mesh.quaternion.premultiply(normalQuat);
-            
-                // Position using centers directly
+             
+                // Then orient upward
+                const upVector = new THREE.Vector3(0, 0, 1);
+                const orientQuat = new THREE.Quaternion();
+                orientQuat.setFromUnitVectors(attachOrientation, upVector);
+                mesh.quaternion.premultiply(orientQuat);
+             
+                // Position using centers
                 const baseCenter = new THREE.Vector3().copy(baseFace.position);
                 const attachCenter = new THREE.Vector3().copy(attachFace.position);
                 const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                 const offset = baseCenter.clone().sub(transformedAttachCenter);
-                            
                 mesh.position.copy(offset);
-            
+             
                 if (selectedPoint.userData.parentModel) {
                     mesh.position.applyMatrix4(selectedPoint.userData.parentModel.matrixWorld);
                     const parentQuat = new THREE.Quaternion();
                     selectedPoint.userData.parentModel.getWorldQuaternion(parentQuat);
                     mesh.quaternion.premultiply(parentQuat);
                 }
-            } else {
+                // Add visualization after probe is correctly positioned
+                if (attachGeometryData) {
+                    mesh.userData.parentModel = selectedPoint.userData.parentModel;
+                    const finalWorldMatrix = new THREE.Matrix4().compose(
+                        mesh.position,
+                        mesh.quaternion,
+                        mesh.scale
+                    );
+                    visualizeHoles(attachGeometryData, mesh, finalWorldMatrix);
+                    visualizeSlideFaces(attachGeometryData, mesh, finalWorldMatrix);
+                }
+             } else {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
@@ -1613,7 +1721,14 @@ async function attachModelAtPoint(modelPath) {
                         }
                     }
                 }
-
+                if (attachGeometryData) {
+                    if (selectedPoint.userData.parentModel) {
+                        mesh.userData.parentModel = selectedPoint.userData.parentModel;
+                    }
+                    window.currentAttachmentPath = modelPath;
+                    visualizeHoles(attachGeometryData, mesh);
+                    visualizeSlideFaces(attachGeometryData, mesh);
+                }
                 window.currentAttachmentPath = modelPath;
                 const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, selectedPoint.userData.attachmentType);
                 if (!matchingFace) {
