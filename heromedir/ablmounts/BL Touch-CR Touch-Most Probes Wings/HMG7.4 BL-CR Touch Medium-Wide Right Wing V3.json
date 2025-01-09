@@ -10,11 +10,11 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 3.79,
+          "diameter": 3.25,
           "position": {
-            "x": 15.94,
-            "y": 16.03,
-            "z": 1.29
+            "x": 12.7,
+            "y": 16.04,
+            "z": 1.26
           },
           "rotation": {
             "x": 0,
@@ -24,11 +24,11 @@
         },
         {
           "id": 2,
-          "diameter": 3.77,
+          "diameter": 3.25,
           "position": {
-            "x": 15.89,
-            "y": 8.69,
-            "z": 1.29
+            "x": 12.69,
+            "y": 8.7,
+            "z": 1.26
           },
           "rotation": {
             "x": 0,
@@ -38,11 +38,39 @@
         },
         {
           "id": 3,
-          "diameter": 3.74,
+          "diameter": 3.25,
           "position": {
-            "x": 15.85,
-            "y": 1.37,
-            "z": 1.29
+            "x": 12.7,
+            "y": 1.35,
+            "z": 1.26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 4,
+          "diameter": 3.25,
+          "position": {
+            "x": 12.69,
+            "y": -5.99,
+            "z": 1.26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 5,
+          "diameter": 3.25,
+          "position": {
+            "x": 12.7,
+            "y": -13.34,
+            "z": 1.26
           },
           "rotation": {
             "x": 0,
@@ -55,19 +83,61 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 7.34,
+          "distance": 7.35,
           "axis": "Y"
         },
         {
           "from": 1,
           "to": 3,
-          "distance": 14.66,
+          "distance": 14.69,
+          "axis": "Y"
+        },
+        {
+          "from": 1,
+          "to": 4,
+          "distance": 22.03,
+          "axis": "Y"
+        },
+        {
+          "from": 1,
+          "to": 5,
+          "distance": 29.38,
           "axis": "Y"
         },
         {
           "from": 2,
           "to": 3,
-          "distance": 7.32,
+          "distance": 7.34,
+          "axis": "Y"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "distance": 14.69,
+          "axis": "Y"
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "distance": 22.04,
+          "axis": "Y"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "distance": 7.34,
+          "axis": "Y"
+        },
+        {
+          "from": 3,
+          "to": 5,
+          "distance": 14.69,
+          "axis": "Y"
+        },
+        {
+          "from": 4,
+          "to": 5,
+          "distance": 7.35,
           "axis": "Y"
         }
       ]
@@ -82,11 +152,11 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 3.2,
+          "diameter": 3.4,
           "position": {
-            "x": -19.63,
+            "x": -19.62,
             "y": 2.83,
-            "z": 2.2
+            "z": 2.18
           },
           "rotation": {
             "x": 90,
@@ -96,11 +166,11 @@
         },
         {
           "id": 2,
-          "diameter": 3.2,
+          "diameter": 3.41,
           "position": {
-            "x": -19.63,
-            "y": -15.18,
-            "z": 2.2
+            "x": -19.62,
+            "y": -15.17,
+            "z": 2.18
           },
           "rotation": {
             "x": 90,
@@ -113,7 +183,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 18.01,
+          "distance": 18,
           "axis": "Y"
         }
       ]
@@ -148,25 +218,25 @@
             "z": -180
           },
           "position": {
-            "x": 15.07,
-            "y": 19.35,
-            "z": 1.29
+            "x": 12.65,
+            "y": 19.09,
+            "z": 1.26
           },
           "dimensions": {
             "width": 4.25,
-            "height": 22.75,
+            "height": 37.25,
             "center2D": {
-              "x": -0.875,
-              "y": 10.625
+              "x": -0.125,
+              "y": 17.625
             },
             "bounds2D": {
               "min": {
-                "x": -3,
-                "y": -0.75
+                "x": -2.25,
+                "y": -1
               },
               "max": {
-                "x": 1.25,
-                "y": 22
+                "x": 2,
+                "y": 36.25
               }
             }
           }
@@ -175,6 +245,6 @@
       "distances": []
     }
   ],
-  "totalHoles": 5,
-  "timestamp": "2025-01-09T22:00:18.364Z"
+  "totalHoles": 7,
+  "timestamp": "2025-01-09T22:05:25.300Z"
 }

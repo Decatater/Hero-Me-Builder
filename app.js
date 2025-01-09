@@ -1240,7 +1240,6 @@ function onMouseMove(event) {
 
 
 async function onMouseClick(event) {
-    // If clicking inside the menu, handle menu-specific logic
     const menuElement = document.getElementById('modelSelect');
     if (event.target.closest('#modelSelect')) {
         if (event.target.closest('.menu-item') || event.target.closest('.back-button')) {
@@ -1250,10 +1249,8 @@ async function onMouseClick(event) {
         return;
     }
 
-    // Update raycaster
     raycaster.setFromCamera(mouse, camera);
 
-    // Check for arrow intersections first
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
@@ -1269,19 +1266,28 @@ async function onMouseClick(event) {
         const model = arrow.userData.targetModel;
         const moveAmount = arrow.userData.moveAmount;
         
-        // Single step movement
-        const newZ = model.position.z + moveAmount;
-        
-        if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
-            model.position.z = newZ;
+        if (model.userData.attachmentType === 'probe') {
+            // Move along Y axis for probes
+            const newY = model.position.y + moveAmount;
+            model.position.y = newY;
             
-            // Update arrow positions correctly based on model position
+            // Keep arrows in their original relative positions
             model.userData.positionControls.forEach(control => {
-                // Calculate offset based on which arrow it is
-                const offset = control.userData.direction === 'up' ? 10 : -10;
-                control.position.copy(model.position);
-                control.position.z += offset;
+                control.position.copy(control.userData.originalPosition);
+                control.position.y += moveAmount;  // Move with the model
             });
+        } else {
+            // Move along Z axis for part cooling
+            const newZ = model.position.z + moveAmount;
+            if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
+                model.position.z = newZ;
+                // Keep part cooling arrows in their original relative positions
+                model.userData.positionControls.forEach(control => {
+                    const pos = control.userData.originalPosition.clone();
+                    pos.z += (newZ - model.userData.initialZ);  // Offset from initial Z
+                    control.position.copy(pos);
+                });
+            }
         }
 
         event.preventDefault();
@@ -1289,7 +1295,7 @@ async function onMouseClick(event) {
         return;
     }
 
-    // Check for attachment point clicks
+    // Rest of click handler remains unchanged...
     const intersects = raycaster.intersectObjects(attachmentPoints, true);
 
     if (intersects.length > 0) {
@@ -1297,7 +1303,6 @@ async function onMouseClick(event) {
         menuElement.innerHTML = await createDropdownForType(selectedPoint.userData.attachmentType);
         menuElement.style.display = 'block';
         
-        // Position menu near cursor with smart viewport positioning
         const menuWidth = 300;
         const menuHeight = Math.min(400, window.innerHeight * 0.8);
         
@@ -1424,7 +1429,7 @@ async function attachModelAtPoint(modelPath) {
         if (attachedModels.has(selectedPoint)) {
             const oldModel = attachedModels.get(selectedPoint);
             if (oldModel.userData.modelPath) {
-                resetUsedPatterns(oldModel.userData.modelPath);
+                resetPatterns(oldModel.userData.modelPath);
             }
             mainModel.remove(oldModel);
             if (oldModel.userData.positionControls) {
@@ -1611,64 +1616,63 @@ async function attachModelAtPoint(modelPath) {
                 const baseGroupIndex = 0;
                 markPatternAsUsed(baseModelPath, { groupIndex: baseGroupIndex });
                 markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
-             
+            
                 const baseGroup = baseGeometryData.slideFaces[0];
                 const attachGroup = attachGeometryData.slideFaces[0];
-                const baseFace = baseGroup.faces[0];
-                const attachFace = attachGroup.faces[0];
-             
-                // First rotate -90° around X to align slide faces
-                const alignQuat = new THREE.Quaternion();
-                alignQuat.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI/2);
-                mesh.quaternion.copy(alignQuat);
-             
-                // Then align normals to face each other
-                const baseNormal = new THREE.Vector3(
-                    baseFace.normal.x,
-                    baseFace.normal.y, 
-                    baseFace.normal.z
-                );
-                const attachNormal = new THREE.Vector3(
-                    attachFace.normal.x,
-                    attachFace.normal.y,
-                    attachFace.normal.z
-                ).applyQuaternion(alignQuat);
-             
-                const normalQuat = new THREE.Quaternion();
-                normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                mesh.quaternion.premultiply(normalQuat);
-             
-                // Then orient upward
+            
+                // First align orientations to sky
                 const upVector = new THREE.Vector3(0, 0, 1);
                 const orientQuat = new THREE.Quaternion();
                 orientQuat.setFromUnitVectors(attachOrientation, upVector);
-                mesh.quaternion.premultiply(orientQuat);
-             
+                mesh.quaternion.copy(orientQuat);
+            
+                // Then align slide face normals
+                const baseNormal = new THREE.Vector3(
+                    baseGroup.faces[0].normal.x,
+                    baseGroup.faces[0].normal.y,
+                    baseGroup.faces[0].normal.z
+                );
+                const attachNormal = new THREE.Vector3(
+                    attachGroup.faces[0].normal.x,
+                    attachGroup.faces[0].normal.y,
+                    attachGroup.faces[0].normal.z
+                ).applyQuaternion(orientQuat);
+            
+                const normalQuat = new THREE.Quaternion();
+                normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                mesh.quaternion.premultiply(normalQuat);
+            
+                // Calculate centers for positioning
+                const baseCenter = new THREE.Vector3(
+                    baseGroup.faces[0].position.x,
+                    baseGroup.faces[0].position.y,
+                    baseGroup.faces[0].position.z
+                );
+                const attachCenter = new THREE.Vector3(
+                    attachGroup.faces[0].position.x,
+                    attachGroup.faces[0].position.y,
+                    attachGroup.faces[0].position.z
+                );
+            
                 // Position using centers
-                const baseCenter = new THREE.Vector3().copy(baseFace.position);
-                const attachCenter = new THREE.Vector3().copy(attachFace.position);
                 const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                 const offset = baseCenter.clone().sub(transformedAttachCenter);
                 mesh.position.copy(offset);
-             
-                if (selectedPoint.userData.parentModel) {
-                    mesh.position.applyMatrix4(selectedPoint.userData.parentModel.matrixWorld);
-                    const parentQuat = new THREE.Quaternion();
-                    selectedPoint.userData.parentModel.getWorldQuaternion(parentQuat);
-                    mesh.quaternion.premultiply(parentQuat);
-                }
-                // Add visualization after probe is correctly positioned
+            
                 if (attachGeometryData) {
                     mesh.userData.parentModel = selectedPoint.userData.parentModel;
-                    const finalWorldMatrix = new THREE.Matrix4().compose(
-                        mesh.position,
-                        mesh.quaternion,
-                        mesh.scale
-                    );
-                    visualizeHoles(attachGeometryData, mesh, finalWorldMatrix);
-                    visualizeSlideFaces(attachGeometryData, mesh, finalWorldMatrix);
+                    visualizeHoles(attachGeometryData, mesh);
+                    visualizeSlideFaces(attachGeometryData, mesh);
                 }
-             } else {
+                // In the probe mount section of attachModelAtPoint()
+                if (selectedPoint.userData.attachmentType === 'probe') {
+                    // Add position control arrows
+                    const positionArrows = createPositionArrows(mesh);
+                    mesh.userData.positionControls = positionArrows;
+                    // Change mainModel.add to mesh.add
+                    positionArrows.forEach(arrow => mesh.add(arrow));
+                }
+            } else {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
@@ -1848,8 +1852,7 @@ async function attachModelAtPoint(modelPath) {
             selectedPoint.visible = false;
 
             // Add position control arrows for part cooling
-            if (selectedPoint.userData.attachmentType === 'partcooling' || 
-                selectedPoint.userData.attachmentType === 'probe') {
+            if (selectedPoint.userData.attachmentType === 'partcooling') {
                 const positionArrows = createPositionArrows(mesh);
                 mesh.userData.positionControls = positionArrows;
                 positionArrows.forEach(arrow => mainModel.add(arrow));
@@ -2097,30 +2100,55 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
 function createPositionArrows(attachedModel) {
     const arrowGeometry = new THREE.CylinderGeometry(2, 0, 8, 16);
     const arrowMaterial = new THREE.MeshPhongMaterial({
-        color: 0x00ff00,
-        transparent: true,
-        opacity: 0.8,
-        emissive: 0x00ff00,
-        emissiveIntensity: 0.5,
-        depthTest: false,
-        depthWrite: false
+        color: 0x03fcec,
+        transparent: false,
+        emissive: 0x03fcec,
+        emissiveIntensity: 0.5
     });
 
-    // Store initial position as max height
     attachedModel.userData.initialZ = attachedModel.position.z;
     attachedModel.userData.minZ = attachedModel.position.z - 8;
 
     const upArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
     const downArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
 
-    // Set fixed positions that never change - adding to scene directly
-    upArrow.position.set(attachedModel.position.x, attachedModel.position.y, attachedModel.position.z + 50);
-    downArrow.position.set(attachedModel.position.x, attachedModel.position.y, attachedModel.position.z - 50);
-    
-    upArrow.rotation.x = -Math.PI/2;
-    downArrow.rotation.x = Math.PI/2;
+    if (attachedModel.userData.attachmentType === 'probe') {
+        upArrow.rotation.x = -Math.PI/2;
+        downArrow.rotation.x = Math.PI/2;
+        
+        // Wider spacing for probe arrows
+        upArrow.position.set(0, 0, 25);
+        downArrow.position.set(0, 0, -25);
+    } else {
+        // Part cooling positioning
+        upArrow.rotation.x = -Math.PI/2;
+        downArrow.rotation.x = Math.PI/2;
+        
+        // Calculate center of the duct using bounding box
+        const bbox = new THREE.Box3().setFromObject(attachedModel);
+        const center = bbox.getCenter(new THREE.Vector3());
+        
+        // Position arrows with backward offset and wider spacing
+        upArrow.position.copy(center);
+        downArrow.position.copy(center);
+        
+        // Base position: backward 30mm in Y, down 20mm in Z, then spread from there
+        upArrow.position.y -= 30;
+        downArrow.position.y -= 30;
+        upArrow.position.z -= 20;      // Move down
+        downArrow.position.z -= 20;    // Move down
+        
+        // Then add the up/down spread
+        upArrow.position.z += 35;      // Spread up from base position
+        downArrow.position.z -= 35;    // Spread down from base position
+    }
+
+    // Store original positions
+    upArrow.userData.originalPosition = upArrow.position.clone();
+    downArrow.userData.originalPosition = downArrow.position.clone();
 
     upArrow.userData = {
+        ...upArrow.userData,
         type: 'positionControl',
         direction: 'up',
         targetModel: attachedModel,
@@ -2128,11 +2156,13 @@ function createPositionArrows(attachedModel) {
     };
 
     downArrow.userData = {
+        ...downArrow.userData,
         type: 'positionControl',
         direction: 'down',
         targetModel: attachedModel,
         moveAmount: -0.5
     };
+
     attachedModel.add(upArrow);
     attachedModel.add(downArrow);
 
@@ -2159,25 +2189,15 @@ function onMouseDown(event) {
         controls.enabled = false;
         isMovingPart = true;
 
-        if (!moveInterval) {
+        if (moveInterval) {
             moveInterval = setInterval(() => {
                 if (selectedArrow) {
                     const model = selectedArrow.userData.targetModel;
-                    const newZ = model.position.z + selectedArrow.userData.moveAmount;
+                    const moveAxis = model.userData.moveAxis.clone();
+                    moveAxis.applyQuaternion(model.quaternion);
                     
-                    if (newZ >= model.userData.minZ && newZ <= model.userData.initialZ) {
-                        model.position.z = newZ;
-                        
-                        // Update arrow positions
-                        model.userData.positionControls.forEach(arrow => {
-                            arrow.position.copy(model.position);
-                            if (arrow.userData.direction === 'up') {
-                                arrow.position.z += 30;
-                            } else {
-                                arrow.position.z -= 30;
-                            }
-                        });
-                    }
+                    const moveVector = moveAxis.multiplyScalar(selectedArrow.userData.moveAmount);
+                    model.position.add(moveVector);
                 }
             }, 16);
         }
