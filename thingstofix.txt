@@ -1,4 +1,1 @@
 1) tertiary attachments dont render if their parent model was removed previously
-2) position arrows are not being placed right
-3) position arrows need to be persistent and quit culling from the scene based on viewing angle
-4) that damn removal issue (removing an attached model will cause its children to stop appearing when reattached)
