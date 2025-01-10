@@ -1,1 +1,3 @@
-1) tertiary attachments dont render if their parent model was removed previously
+1) the menu back button closes the menu instead of going up a folder (or closing if its the start directory)
+2) probe mount menu shows left and right side attachments instead of filtering for the selected side
+3) cable management towers dont align with the holes

@@ -44,26 +44,67 @@ const categoryMenus = {
         }
     },
     wing: {
-        title: "Wings",
-        paths: ["heromedir/ablmounts"],
-        filter: (item, userData) => {
-            const name = item.name.toLowerCase();
-            const excludedTerms = ['mount', 'spacer'];
+        title: "Wing Options",
+        isCustomMenu: true,
+        createCustomMenu: (userData) => {
             const isRightSide = userData?.attachmentName?.includes('opposite');
             
-            if (item.type === 'file') {
-                if (!name.endsWith('.stl') || excludedTerms.some(term => name.includes(term))) {
-                    return false;
+            // Check for existing attachments
+            let hasProbeWing = false;
+            let hasCableManagement = false;
+            
+            attachedModels.forEach((model, point) => {
+                if (point.userData?.attachmentType === 'wing') {
+                    const modelPath = model.userData.modelPath.toLowerCase();
+                    if (modelPath.includes('cablemanagement')) {
+                        hasCableManagement = true;
+                    } else {
+                        hasProbeWing = true;
+                    }
                 }
-                // Filter by side for STL files
-                if (isRightSide) {
-                    return name.includes('right');
-                } else {
-                    return name.includes('left');
-                }
+            });
+
+            // Build available options based on what's already attached
+            const items = [];
+            
+            if (!hasProbeWing) {
+                items.push({
+                    title: "Probe Wings",
+                    path: "heromedir/ablmounts",
+                    filter: (item) => {
+                        const name = item.name.toLowerCase();
+                        const excludedTerms = ['mount', 'spacer'];
+                        
+                        if (item.type === 'file') {
+                            if (!name.endsWith('.stl') || excludedTerms.some(term => name.includes(term))) {
+                                return false;
+                            }
+                            return isRightSide ? name.includes('right') : name.includes('left');
+                        }
+                        return !excludedTerms.some(term => name.includes(term));
+                    }
+                });
             }
-            // For directories, just filter out excluded terms
-            return !excludedTerms.some(term => name.includes(term));
+
+            if (!hasCableManagement) {
+                items.push({
+                    title: "Cable Management",
+                    path: "heromedir/cablemanagement",
+                    filter: (item) => {
+                        const name = item.name.toLowerCase();
+                        if (item.type === 'file') {
+                            if (!name.endsWith('.stl')) return false;
+                            return isRightSide ? name.includes('right') : name.includes('left');
+                        }
+                        return true;
+                    }
+                });
+            }
+
+            return {
+                type: 'category',
+                items: items
+            };
         }
     },
     gantry: {
@@ -839,30 +880,42 @@ function findClosestFace(faces, point) {
     return closestFace;
 }
 // Function to find directory by path in structure
-function findDirectoryByPath(path, structure) {
-    const normalizedSearchPath = normalizePath(path);
+function findDirectoryByPath(paths, structure) {
+    if (!Array.isArray(paths)) {
+        paths = [paths];
+    }
     
-    function search(items) {
+    const normalizedSearchPaths = paths.map(path => normalizePath(path));
+    let allContents = [];
+    
+    function search(items, searchPath) {
         if (!items) return null;
         
         for (const item of items) {
             const normalizedItemPath = normalizePath(item.path);
             
             if (item.type === 'directory') {
-                if (normalizedItemPath === normalizedSearchPath) {
+                if (normalizedItemPath === searchPath) {
                     return item.children;
                 }
                 
-                const found = search(item.children);
+                const found = search(item.children, searchPath);
                 if (found) return found;
             }
         }
         return null;
     }
     
-    return search(structure);
+    // Search for each path and combine results
+    normalizedSearchPaths.forEach(searchPath => {
+        const contents = search(structure, searchPath);
+        if (contents) {
+            allContents = [...allContents, ...contents];
+        }
+    });
+    
+    return allContents.length > 0 ? allContents : null;
 }
-
 async function getFileList(targetFolder) {
     try {
         const response = await fetch('/list-files');
@@ -937,19 +990,29 @@ function updateMenuContent(menuElement) {
     // Add directories first
     const directories = current.folder.filter(item => item.type === 'directory');
     directories.forEach(dir => {
-        const fullPath = `${current.basePath}/${dir.name}`.replace(/^\/+/, '');
-        const folderId = createFolderId(fullPath);
-        
-        menuState.set(folderId, {
-            folder: dir.children,
-            basePath: fullPath,
-            title: dir.name
-        });
+        let folderId;
+        if (current.isCustomMenu && dir.customData) {
+            // For custom menu items
+            folderId = createFolderId(dir.customData.path);
+            menuState.set(folderId, {
+                customData: dir.customData,
+                title: dir.customData.title
+            });
+        } else {
+            // For regular directories
+            const fullPath = `${current.basePath}/${dir.name}`.replace(/^\/+/, '');
+            folderId = createFolderId(fullPath);
+            menuState.set(folderId, {
+                folder: dir.children,
+                basePath: fullPath,
+                title: dir.name
+            });
+        }
         
         html += `
             <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
                 <span class="folder-icon"></span>
-                ${dir.name}
+                ${dir.customData ? dir.customData.title : dir.name}
             </div>`;
     });
     
@@ -985,11 +1048,29 @@ function navigateToFolder(folderId) {
         console.error('No folder data found for ID:', folderId);
         return;
     }
-    
-    currentMenuPath.push(folderData);
+
+    if (folderData.customData) {
+        // Handle custom menu navigation
+        const directory = findDirectoryByPath(folderData.customData.path, directoryStructure);
+        if (!directory) return;
+
+        const filteredContents = folderData.customData.filter ? 
+            directory.filter(item => folderData.customData.filter(item)) : 
+            directory;
+
+        currentMenuPath.push({
+            folder: filteredContents,
+            basePath: folderData.customData.path,
+            title: folderData.customData.title
+        });
+    } else {
+        // Handle regular directory navigation
+        currentMenuPath.push(folderData);
+    }
+
     const menuElement = document.getElementById('modelSelect');
     updateMenuContent(menuElement);
-    menuElement.style.display = 'block'; // Ensure menu stays visible
+    menuElement.style.display = 'block';
 }
 
 function navigateBack() {
@@ -1156,34 +1237,36 @@ async function createDropdownForType(type) {
     menuState.clear();
     const menu = categoryMenus[type];
     if (!menu) return '';
-    
-    // Recursive function to filter directory contents
-    const filterContents = (directory, userData) => {
-        if (!directory) return [];
+
+    if (menu.isCustomMenu) {
+        const customMenu = menu.createCustomMenu(selectedPoint?.userData);
+        if (customMenu.type === 'category') {
+            currentMenuPath = [{
+                folder: customMenu.items.map(item => ({
+                    type: 'directory',
+                    name: item.title,
+                    customData: item
+                })),
+                basePath: '',
+                title: menu.title,
+                isCustomMenu: true
+            }];
+        }
+    } else {
+        // Original directory-based menu code
+        const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
+        if (!directory) return '';
         
-        return directory.map(item => {
-            if (item.type === 'directory' && item.children) {
-                return {
-                    ...item,
-                    children: filterContents(item.children, userData)
-                };
-            }
-            return item;
-        }).filter(item => menu.filter ? menu.filter(item, userData) : true);
-    };
-    
-    const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
-    if (!directory) return '';
-    
-    const filteredContents = menu.filter ? 
-        filterContents(directory, selectedPoint?.userData) : 
-        directory;
-    
-    currentMenuPath = [{
-        folder: filteredContents,
-        basePath: menu.paths[0],
-        title: menu.title
-    }];
+        const filteredContents = menu.filter ? 
+            filterContents(directory, selectedPoint?.userData) : 
+            directory;
+        
+        currentMenuPath = [{
+            folder: filteredContents,
+            basePath: menu.paths[0],
+            title: menu.title
+        }];
+    }
     
     const menuElement = document.createElement('div');
     updateMenuContent(menuElement);
@@ -1797,8 +1880,8 @@ async function attachModelAtPoint(modelPath) {
                             const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                             mesh.quaternion.premultiply(flipQuat);
                         }
-                    } else if (selectedPoint.userData.attachmentType === 'gantry' || 
-                             selectedPoint.userData.attachmentType === 'gantryclip') {
+                    } else if (selectedPoint.userData.attachmentType === 'gantry') {
+                        // Original gantry adapter alignment - this was working correctly
                         const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
 
@@ -1813,6 +1896,49 @@ async function attachModelAtPoint(modelPath) {
                                 rotatedOrientation.x > 0 ? -Math.PI/2 : Math.PI/2
                             );
                             mesh.quaternion.premultiply(rotQuat);
+                        }
+                    } else if (selectedPoint.userData.attachmentType === 'gantryclip') {
+                        // First align the mounting holes perfectly
+                        const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
+                        mesh.quaternion.copy(normalQuat);
+
+                        // Get two holes from each pattern to establish orientation
+                        const baseHole1 = baseHoles[0];
+                        const baseHole2 = baseHoles[1];
+                        const attachHole1 = attachHoles[0];
+                        const attachHole2 = attachHoles[1];
+
+                        // Calculate vectors between holes
+                        const baseVector = new THREE.Vector3(
+                            baseHole2.position.x - baseHole1.position.x,
+                            baseHole2.position.y - baseHole1.position.y,
+                            baseHole2.position.z - baseHole1.position.z
+                        ).normalize();
+
+                        const attachVector = new THREE.Vector3(
+                            attachHole2.position.x - attachHole1.position.x,
+                            attachHole2.position.y - attachHole1.position.y,
+                            attachHole2.position.z - attachHole1.position.z
+                        ).normalize();
+
+                        // Rotate the attachment vector by the normal quaternion
+                        const rotatedAttachVector = attachVector.clone().applyQuaternion(normalQuat);
+
+                        // Calculate angle between the vectors on the mounting plane
+                        const angle = Math.atan2(
+                            baseVector.x * rotatedAttachVector.z - baseVector.z * rotatedAttachVector.x,
+                            baseVector.x * rotatedAttachVector.x + baseVector.z * rotatedAttachVector.z
+                        );
+
+                        // Create and apply rotation around the base normal
+                        const alignQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, angle);
+                        mesh.quaternion.premultiply(alignQuat);
+
+                        // After hole alignment, check if orientation vector is pointing up
+                        const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
+                        if (finalOrientation.y < 0) {
+                            const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            mesh.quaternion.premultiply(flipQuat);
                         }
                     } else if (selectedPoint.userData.attachmentType === 'adxl') {
                         // Use standard alignment for secondary attachments
@@ -1932,12 +2058,12 @@ function onDoubleClick(event) {
     if (intersects.length > 0) {
         let targetMesh = intersects[0].object;
         
-        // Find the first parent that has a modelPath - this will be our actual target
+        // Find the first parent that has a modelPath
         while (targetMesh.parent && !targetMesh.userData?.modelPath) {
             targetMesh = targetMesh.parent;
         }
 
-        // Find the specific attachment point for this model
+        // Find the attachment point for this model
         let targetPoint = null;
         for (let [point, model] of attachedModels) {
             if (model === targetMesh) {
@@ -1947,110 +2073,76 @@ function onDoubleClick(event) {
         }
 
         if (targetPoint) {
-            console.log('Processing model:', targetMesh.userData.modelPath);
-            console.log('Model type:', targetMesh.userData.attachmentType);
-            console.log('Is secondary:', !!targetMesh.userData.parentModel);
-            console.log('Current patterns:', [...usedHolePatterns.entries()]);
-        
-            // For secondary attachments (probe, direct drive, etc.)
-            if (targetMesh.userData.parentModel) {
-                // Probes use slide faces
-                if (targetMesh.userData.attachmentType === 'probe') {
-                    if (usedPatterns.has(targetMesh.userData.modelPath)) {
-                        const patterns = usedPatterns.get(targetMesh.userData.modelPath);
-                        // Only remove this probe's slide patterns
-                        if (patterns.slides) {
-                            console.log('Clearing probe slide patterns');
-                            patterns.slides.clear();
-                        }
-                    }
-                } 
-                // Direct drives use hole patterns
-                else if (targetMesh.userData.patternMapping) {
-                    const mapping = targetMesh.userData.patternMapping;
-                    if (usedHolePatterns.has(mapping.attachmentModelPath)) {
-                        console.log('Clearing direct drive hole pattern:', mapping.attachmentFaceId);
-                        usedHolePatterns.get(mapping.attachmentModelPath)
-                            .delete(mapping.attachmentFaceId);
-                    }
-                }
-            }
-            // For primary attachments (wings, etc)
-            else if (targetMesh.userData.patternMapping) {
-                const mapping = targetMesh.userData.patternMapping;
-                console.log('Pattern mapping:', mapping);
-        
-                // Clear both sides of the pattern
-                if (usedHolePatterns.has(mapping.attachmentModelPath)) {
-                    console.log('Clearing primary attachment pattern:', mapping.attachmentFaceId);
-                    usedHolePatterns.get(mapping.attachmentModelPath).delete(mapping.attachmentFaceId);
-                }
-                if (usedHolePatterns.has(mapping.baseModelPath)) {
-                    console.log('Clearing base pattern:', mapping.baseFaceId);
-                    usedHolePatterns.get(mapping.baseModelPath).delete(mapping.baseFaceId);
-                }
-            }
-        
-            // Clean up position controls if they exist
+            console.log('Removing model:', {
+                path: targetMesh.userData.modelPath,
+                type: targetMesh.userData.attachmentType,
+                isSecondary: !!targetMesh.userData.parentModel
+            });
+
+            // Remove arrows first
             if (targetMesh.userData.positionControls) {
                 targetMesh.userData.positionControls.forEach(arrow => {
-                    if (arrow.parent) {
-                        console.log('Removing position control arrow');
-                        arrow.parent.remove(arrow);
-                    }
+                    if (arrow.parent) arrow.parent.remove(arrow);
                 });
             }
-        
-            // Remove the model and show its attachment point
-            console.log('Removing model from scene');
-            targetMesh.parent.remove(targetMesh);
-            targetPoint.visible = true;
-            attachedModels.delete(targetPoint);
-        
-            // Handle child models only for primary attachments
+
+            // Handle primary model removal
             if (!targetMesh.userData.parentModel) {
+                // Remove all child models first
                 const childrenToRemove = [];
                 attachedModels.forEach((childModel, childPoint) => {
                     if (childPoint.userData.parentModel === targetMesh) {
                         childrenToRemove.push({ model: childModel, point: childPoint });
                     }
                 });
-        
+
+                // Remove each child
                 childrenToRemove.forEach(({ model: childModel, point: childPoint }) => {
-                    console.log('Removing child model:', childModel.userData.modelPath);
+                    console.log('Removing child:', childModel.userData.modelPath);
                     
-                    childModel.parent.remove(childModel);
-                    
+                    // Remove child's arrows
                     if (childModel.userData.positionControls) {
                         childModel.userData.positionControls.forEach(arrow => {
                             if (arrow.parent) arrow.parent.remove(arrow);
                         });
                     }
                     
-                    // Clean up child's own patterns only
-                    if (childModel.userData.attachmentType === 'probe') {
-                        if (usedPatterns.has(childModel.userData.modelPath)) {
-                            const patterns = usedPatterns.get(childModel.userData.modelPath);
-                            if (patterns.slides) {
-                                patterns.slides.clear();
-                            }
-                        }
+                    // Reset child's patterns
+                    if (childModel.userData.modelPath) {
+                        resetPatterns(childModel.userData.modelPath, false);
                     }
                     
+                    // Remove child from scene
+                    if (childModel.parent) {
+                        childModel.parent.remove(childModel);
+                    }
+                    
+                    // Show attachment point and clean up tracking
                     childPoint.visible = true;
                     attachedModels.delete(childPoint);
-                    
-                    if (childModel.geometry) childModel.geometry.dispose();
-                    if (childModel.material) {
-                        if (Array.isArray(childModel.material)) {
-                            childModel.material.forEach(mat => mat.dispose());
-                        } else {
-                            childModel.material.dispose();
-                        }
-                    }
                 });
+
+                // Reset parent's patterns (including child pattern cleanup)
+                resetPatterns(targetMesh.userData.modelPath, true);
+            } else {
+                // Secondary model - just reset its own patterns
+                resetPatterns(targetMesh.userData.modelPath, false);
+            }
+
+            // Remove the model itself
+            if (targetMesh.parent) {
+                targetMesh.parent.remove(targetMesh);
             }
             
+            // Show attachment point and remove from tracking
+            targetPoint.visible = true;
+            attachedModels.delete(targetPoint);
+
+            // For primary models, recreate attachment points
+            if (!targetMesh.userData.parentModel) {
+                createAttachmentPoints(mainModel);
+            }
+
             cleanupOrphanedPatterns();
         }
     }
@@ -2285,10 +2377,24 @@ function isPatternUsed(modelPath, pattern) {
     return false;
 }
 // Function to reset used patterns for a model
-function resetPatterns(modelPath) {
-    console.log(`Resetting all patterns for model ${modelPath}`);
+function resetPatterns(modelPath, isParent = false) {
+    console.log(`Resetting patterns for model ${modelPath} (isParent: ${isParent})`);
+    
+    // Always clear direct patterns
     usedHolePatterns.delete(modelPath);
     usedPatterns.delete(modelPath);
+    
+    // For parent models, also clear patterns of all child models
+    if (isParent) {
+        attachedModels.forEach((model, point) => {
+            if (point.userData.parentModel?.userData?.modelPath === modelPath) {
+                console.log('Clearing child patterns for:', model.userData.modelPath);
+                usedHolePatterns.delete(model.userData.modelPath);
+                usedPatterns.delete(model.userData.modelPath);
+            }
+        });
+    }
+    
     debugPatternTracking();
 }
 // Function to get all used patterns for a model
@@ -2483,37 +2589,39 @@ function resetUIState() {
     selectedPoint = null;
 }
 function cleanupOrphanedPatterns() {
-    // Get list of models that are actually in the scene by traversing mainModel
     const activeModelPaths = new Set();
+    
+    // Collect all active model paths
     mainModel.traverse((obj) => {
         if (obj.userData?.modelPath) {
             activeModelPaths.add(obj.userData.modelPath);
         }
     });
 
-    console.log("Active models in scene:", Array.from(activeModelPaths));
+    console.log('Active models:', Array.from(activeModelPaths));
 
-    // Clean up pattern data for models that no longer exist in scene
-    usedHolePatterns.forEach((patterns, modelPath) => {
+    // Clean up hole patterns
+    for (const [modelPath] of usedHolePatterns) {
         if (!activeModelPaths.has(modelPath)) {
-            console.log(`Cleaning up hole patterns for removed model: ${modelPath}`);
+            console.log('Cleaning up hole patterns for:', modelPath);
             usedHolePatterns.delete(modelPath);
         }
-    });
+    }
 
-    // Clean up slide patterns too
-    usedPatterns.forEach((patterns, modelPath) => {
+    // Clean up slide patterns
+    for (const [modelPath] of usedPatterns) {
         if (!activeModelPaths.has(modelPath)) {
-            console.log(`Cleaning up slide patterns for removed model: ${modelPath}`);
+            console.log('Cleaning up slide patterns for:', modelPath);
             usedPatterns.delete(modelPath);
         }
-    });
+    }
 
-    // Also cleanup attachedModels Map for any models not in scene
-    for (let [point, model] of attachedModels) {
+    // Clean up attachedModels references
+    for (const [point, model] of attachedModels) {
         if (!activeModelPaths.has(model.userData.modelPath)) {
-            console.log(`Cleaning up attachedModels entry for removed model: ${model.userData.modelPath}`);
+            console.log('Cleaning up attachedModels entry for:', model.userData.modelPath);
             attachedModels.delete(point);
+            point.visible = true;
         }
     }
 }
