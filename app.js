@@ -2625,4 +2625,43 @@ function cleanupOrphanedPatterns() {
         }
     }
 }
+// Function to filter directory contents based on menu configuration
+function filterContents(contents, userData) {
+    if (!contents) return [];
+    
+    return contents.filter(item => {
+        // If it's a directory, always include it
+        if (item.type === 'directory') return true;
+        
+        // Filter out non-STL files
+        if (!item.name.toLowerCase().endsWith('.stl')) return false;
+        
+        // Get menu configuration for the current type
+        const menu = categoryMenus[selectedPoint?.userData?.attachmentType];
+        if (!menu?.filter) return true;
+        
+        const name = item.name.toLowerCase();
+        const isRightSide = userData?.attachmentName?.includes('opposite');
+        
+        // Check for side-specific naming conventions
+        if (item.type === 'file' && name.endsWith('.stl')) {
+            // For right side points
+            if (isRightSide) {
+                if (name.includes('left') && !name.includes('right')) {
+                    return false;
+                }
+            } 
+            // For left side points
+            else {
+                if (name.includes('right') && !name.includes('left')) {
+                    return false;
+                }
+            }
+        }
+        
+        // Apply the menu's additional filter function if it exists
+        return menu.filter(item, userData);
+    });
+}
+
 init();

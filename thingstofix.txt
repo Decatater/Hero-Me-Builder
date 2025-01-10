@@ -1,3 +1,4 @@
 1) the menu back button closes the menu instead of going up a folder (or closing if its the start directory)
 2) probe mount menu shows left and right side attachments instead of filtering for the selected side
 3) cable management towers dont align with the holes
+4) attachment points on the base are being reset when parts attached to it are removed, it should only remove the used face/slideface that the removed part attached to, not everything
