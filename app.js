@@ -1932,8 +1932,8 @@ function onDoubleClick(event) {
     if (intersects.length > 0) {
         let targetMesh = intersects[0].object;
         
-        // Find the actual model that contains the patterns
-        while (targetMesh.parent && targetMesh.parent !== mainModel && !targetMesh.userData?.patternMapping) {
+        // Find the first parent that has a modelPath - this will be our actual target
+        while (targetMesh.parent && !targetMesh.userData?.modelPath) {
             targetMesh = targetMesh.parent;
         }
 
@@ -1948,76 +1948,108 @@ function onDoubleClick(event) {
 
         if (targetPoint) {
             console.log('Processing model:', targetMesh.userData.modelPath);
-
-            // Clean up patterns from this model AND its parent's used face
-            if (targetMesh.userData.patternMapping) {
-                // Clear this model's used pattern
-                if (usedHolePatterns.has(targetMesh.userData.patternMapping.attachmentModelPath)) {
-                    usedHolePatterns.get(targetMesh.userData.patternMapping.attachmentModelPath)
-                        .delete(targetMesh.userData.patternMapping.attachmentFaceId);
-                }
-                // Clear the parent's used pattern that this model was attached to
-                if (usedHolePatterns.has(targetMesh.userData.patternMapping.baseModelPath)) {
-                    usedHolePatterns.get(targetMesh.userData.patternMapping.baseModelPath)
-                        .delete(targetMesh.userData.patternMapping.baseFaceId);
+            console.log('Model type:', targetMesh.userData.attachmentType);
+            console.log('Is secondary:', !!targetMesh.userData.parentModel);
+            console.log('Current patterns:', [...usedHolePatterns.entries()]);
+        
+            // For secondary attachments (probe, direct drive, etc.)
+            if (targetMesh.userData.parentModel) {
+                // Probes use slide faces
+                if (targetMesh.userData.attachmentType === 'probe') {
+                    if (usedPatterns.has(targetMesh.userData.modelPath)) {
+                        const patterns = usedPatterns.get(targetMesh.userData.modelPath);
+                        // Only remove this probe's slide patterns
+                        if (patterns.slides) {
+                            console.log('Clearing probe slide patterns');
+                            patterns.slides.clear();
+                        }
+                    }
+                } 
+                // Direct drives use hole patterns
+                else if (targetMesh.userData.patternMapping) {
+                    const mapping = targetMesh.userData.patternMapping;
+                    if (usedHolePatterns.has(mapping.attachmentModelPath)) {
+                        console.log('Clearing direct drive hole pattern:', mapping.attachmentFaceId);
+                        usedHolePatterns.get(mapping.attachmentModelPath)
+                            .delete(mapping.attachmentFaceId);
+                    }
                 }
             }
-
-            // Remove the model from the scene
+            // For primary attachments (wings, etc)
+            else if (targetMesh.userData.patternMapping) {
+                const mapping = targetMesh.userData.patternMapping;
+                console.log('Pattern mapping:', mapping);
+        
+                // Clear both sides of the pattern
+                if (usedHolePatterns.has(mapping.attachmentModelPath)) {
+                    console.log('Clearing primary attachment pattern:', mapping.attachmentFaceId);
+                    usedHolePatterns.get(mapping.attachmentModelPath).delete(mapping.attachmentFaceId);
+                }
+                if (usedHolePatterns.has(mapping.baseModelPath)) {
+                    console.log('Clearing base pattern:', mapping.baseFaceId);
+                    usedHolePatterns.get(mapping.baseModelPath).delete(mapping.baseFaceId);
+                }
+            }
+        
+            // Clean up position controls if they exist
+            if (targetMesh.userData.positionControls) {
+                targetMesh.userData.positionControls.forEach(arrow => {
+                    if (arrow.parent) {
+                        console.log('Removing position control arrow');
+                        arrow.parent.remove(arrow);
+                    }
+                });
+            }
+        
+            // Remove the model and show its attachment point
+            console.log('Removing model from scene');
             targetMesh.parent.remove(targetMesh);
             targetPoint.visible = true;
             attachedModels.delete(targetPoint);
-
-            // Remove child models that are directly attached to this model
-            const childrenToRemove = [];
-            attachedModels.forEach((childModel, childPoint) => {
-                if (childPoint.userData.parentModel === targetMesh) {
-                    childrenToRemove.push({ model: childModel, point: childPoint });
-                }
-            });
-
-            // Remove each child model and clean up
-            childrenToRemove.forEach(({ model: childModel, point: childPoint }) => {
-                console.log('Removing child model:', childModel.userData.modelPath);
-                
-                // Remove from parent model (the actual mesh)
-                childModel.parent.remove(childModel);
-                
-                // Remove position controls if they exist
-                if (childModel.userData.positionControls) {
-                    childModel.userData.positionControls.forEach(arrow => {
-                        if (arrow.parent) arrow.parent.remove(arrow);
-                    });
-                }
-                
-                // Clean up patterns
-                if (childModel.userData.patternMapping) {
-                    if (usedHolePatterns.has(childModel.userData.patternMapping.baseModelPath)) {
-                        usedHolePatterns.get(childModel.userData.patternMapping.baseModelPath)
-                            .delete(childModel.userData.patternMapping.baseFaceId);
+        
+            // Handle child models only for primary attachments
+            if (!targetMesh.userData.parentModel) {
+                const childrenToRemove = [];
+                attachedModels.forEach((childModel, childPoint) => {
+                    if (childPoint.userData.parentModel === targetMesh) {
+                        childrenToRemove.push({ model: childModel, point: childPoint });
                     }
-                    if (usedHolePatterns.has(childModel.userData.patternMapping.attachmentModelPath)) {
-                        usedHolePatterns.get(childModel.userData.patternMapping.attachmentModelPath)
-                            .delete(childModel.userData.patternMapping.attachmentFaceId);
+                });
+        
+                childrenToRemove.forEach(({ model: childModel, point: childPoint }) => {
+                    console.log('Removing child model:', childModel.userData.modelPath);
+                    
+                    childModel.parent.remove(childModel);
+                    
+                    if (childModel.userData.positionControls) {
+                        childModel.userData.positionControls.forEach(arrow => {
+                            if (arrow.parent) arrow.parent.remove(arrow);
+                        });
                     }
-                }
-                
-                // Reset attachment point visibility
-                childPoint.visible = true;
-                
-                // Remove from tracking map
-                attachedModels.delete(childPoint);
-                
-                // Dispose of geometries and materials
-                if (childModel.geometry) childModel.geometry.dispose();
-                if (childModel.material) {
-                    if (Array.isArray(childModel.material)) {
-                        childModel.material.forEach(mat => mat.dispose());
-                    } else {
-                        childModel.material.dispose();
+                    
+                    // Clean up child's own patterns only
+                    if (childModel.userData.attachmentType === 'probe') {
+                        if (usedPatterns.has(childModel.userData.modelPath)) {
+                            const patterns = usedPatterns.get(childModel.userData.modelPath);
+                            if (patterns.slides) {
+                                patterns.slides.clear();
+                            }
+                        }
                     }
-                }
-            });
+                    
+                    childPoint.visible = true;
+                    attachedModels.delete(childPoint);
+                    
+                    if (childModel.geometry) childModel.geometry.dispose();
+                    if (childModel.material) {
+                        if (Array.isArray(childModel.material)) {
+                            childModel.material.forEach(mat => mat.dispose());
+                        } else {
+                            childModel.material.dispose();
+                        }
+                    }
+                });
+            }
             
             cleanupOrphanedPatterns();
         }
