@@ -1186,10 +1186,21 @@ async function createAttachmentPoints(object) {
     // Keep track of assigned faces to avoid duplicates
     const assignedFaces = new Set();
 
+    // First, collect all existing attachments and their face patterns
+    attachedModels.forEach((model, point) => {
+        if (model.userData.patternMapping) {
+            const { baseFaceId } = model.userData.patternMapping;
+            assignedFaces.add(baseFaceId);
+            
+            // Mark the pattern as used in the tracking system
+            markPatternAsUsed('heromedir/base/UniversalBase.stl', { faceId: baseFaceId });
+        }
+    });
+
     // First, find specific patterns we want to match
     const findFaceByCharacteristics = (characteristics) => {
         return geometryData.faces.find(face => {
-            if (assignedFaces.has(face)) return false;
+            if (assignedFaces.has(face.faceId)) return false;
             return Object.entries(characteristics).every(([key, value]) => {
                 if (key === 'holeCount') return face.holes?.length === value;
                 if (key === 'normal') {
@@ -1236,7 +1247,7 @@ async function createAttachmentPoints(object) {
         const face = findFaceByCharacteristics(def.characteristics);
         if (!face) continue;
 
-        assignedFaces.add(face);
+        assignedFaces.add(face.faceId);
 
         const center = calculateHolePatternCenter(face.holes);
         const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
@@ -1250,6 +1261,20 @@ async function createAttachmentPoints(object) {
             point.userData.attachmentType = def.type;
             point.userData.attachmentName = def.type + suffix;
             point.userData.normal = normal;
+            point.userData.faceId = face.faceId; // Store the face ID
+
+            // Check if this point already has a model attached
+            let isAttached = false;
+            attachedModels.forEach((model, existingPoint) => {
+                if (existingPoint.userData.attachmentType === def.type &&
+                    existingPoint.userData.attachmentName === (def.type + suffix)) {
+                    isAttached = true;
+                }
+            });
+
+            // Only show point if no model is attached
+            point.visible = !isAttached;
+            
             object.add(point);
             attachmentPoints.push(point);
         };
@@ -1262,7 +1287,19 @@ async function createAttachmentPoints(object) {
             oppositeCenter.x *= -1;
             const oppositeNormal = normal.clone();
             oppositeNormal.x *= -1;  // Flip the normal for the opposite side
-            createPoint(oppositeCenter, oppositeNormal, '_opposite');
+
+            // Find matching face for opposite side
+            const oppositeFace = geometryData.faces.find(f => 
+                !assignedFaces.has(f.faceId) &&
+                Math.abs(f.normal.x - (-face.normal.x)) < 0.1 &&
+                Math.abs(f.normal.y - face.normal.y) < 0.1 &&
+                Math.abs(f.normal.z - face.normal.z) < 0.1
+            );
+
+            if (oppositeFace) {
+                assignedFaces.add(oppositeFace.faceId);
+                createPoint(oppositeCenter, oppositeNormal, '_opposite');
+            }
         }
     }
 }
