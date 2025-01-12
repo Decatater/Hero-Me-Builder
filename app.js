@@ -33,11 +33,14 @@ const categoryMenus = {
         filter: (item, userData) => {
             const name = item.name.toLowerCase();
             const isRightSide = userData?.attachmentName?.includes('opposite');
+            
             if (item.type === 'file' && name.endsWith('.stl')) {
                 if (isRightSide) {
-                    return !name.includes('left');
+                    // For right side, show if it has 'right' OR doesn't specify a side
+                    return name.includes('right') || (!name.includes('left') && !name.includes('right'));
                 } else {
-                    return !name.includes('right');
+                    // For left side, show if it has 'left' OR doesn't specify a side
+                    return name.includes('left') || (!name.includes('left') && !name.includes('right'));
                 }
             }
             return true; // Show all folders
@@ -48,11 +51,9 @@ const categoryMenus = {
         isCustomMenu: true,
         createCustomMenu: (userData) => {
             const isRightSide = userData?.attachmentName?.includes('opposite');
-            
-            // Check for existing attachments
             let hasProbeWing = false;
             let hasCableManagement = false;
-            
+
             attachedModels.forEach((model, point) => {
                 if (point.userData?.attachmentType === 'wing') {
                     const modelPath = model.userData.modelPath.toLowerCase();
@@ -64,24 +65,30 @@ const categoryMenus = {
                 }
             });
 
-            // Build available options based on what's already attached
             const items = [];
-            
+
             if (!hasProbeWing) {
                 items.push({
                     title: "Probe Wings",
                     path: "heromedir/ablmounts",
                     filter: (item) => {
                         const name = item.name.toLowerCase();
-                        const excludedTerms = ['mount', 'spacer'];
-                        
-                        if (item.type === 'file') {
-                            if (!name.endsWith('.stl') || excludedTerms.some(term => name.includes(term))) {
+                        const excludedTerms = ['mount', 'mounts', 'spacer'];
+
+                        if (item.type === 'directory') {
+                            return !excludedTerms.some(term => name.includes(term));
+                        }
+
+                        if (item.type === 'file' && name.endsWith('.stl')) {
+                            if (excludedTerms.some(term => name.includes(term))) {
                                 return false;
                             }
-                            return isRightSide ? name.includes('right') : name.includes('left');
+
+                            return isRightSide ?
+                                (name.includes('right') || (!name.includes('left') && !name.includes('right'))) :
+                                (name.includes('left') || (!name.includes('left') && !name.includes('right')));
                         }
-                        return !excludedTerms.some(term => name.includes(term));
+                        return false;
                     }
                 });
             }
@@ -215,12 +222,12 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     let bestTransform = null;
 
     // For gantries, prioritize 4-hole faces
-    const facesToCheck = attachmentType === 'gantry' 
+    const facesToCheck = attachmentType === 'gantry'
         ? attachmentFaces.filter(face => face.holes.length === 4)
         : attachmentFaces;
 
     // Filter out already used faces
-    const availableFaces = facesToCheck.filter(face => 
+    const availableFaces = facesToCheck.filter(face =>
         !isHolePatternUsed(window.currentAttachmentPath, face));
 
     for (const attachFace of availableFaces) {
@@ -291,7 +298,7 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
 
         console.log('Created pattern mapping:', patternMapping);
         debugPatternTracking();
-        
+
         return bestMatch;
     }
     return null;
@@ -527,7 +534,7 @@ function init() {
         console.log("Raw mousedown event fired");
         console.log("Target:", e.target);
     }, true);
-    window.addEventListener('resize', onWindowResize, false); 
+    window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('mousedown', onMouseDown, true); // Use capture phase
     window.addEventListener('mouseup', onMouseUp, true);    // Use capture phase
     window.addEventListener('mousemove', onMouseMove, false);
@@ -562,7 +569,7 @@ function init() {
 }
 function visualizeGeometryFeatures(geometryData, parentMesh) {
     // Clean up any existing visualizations
-    parentMesh.children = parentMesh.children.filter(child => 
+    parentMesh.children = parentMesh.children.filter(child =>
         !child.userData.isVisualization
     );
 
@@ -578,7 +585,7 @@ function visualizeGeometryFeatures(geometryData, parentMesh) {
     if (geometryData.faces) {
         const holeGeometry = new THREE.CylinderGeometry(2, 2, 10, 16);
         const colors = [
-            0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 
+            0xff0000, 0x00ff00, 0x0000ff, 0xff00ff,
             0xffff00, 0x00ffff, 0xff8000, 0x8000ff,
             0x0080ff, 0xff0080
         ];
@@ -592,7 +599,7 @@ function visualizeGeometryFeatures(geometryData, parentMesh) {
 
             face.holes?.forEach(hole => {
                 const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial);
-                
+
                 // Position hole
                 holeMesh.position.set(
                     hole.position.x,
@@ -702,7 +709,7 @@ function visualizeGeometryFeatures(geometryData, parentMesh) {
 
 function visualizeHoles(geometryData, parentMesh) {
     const colors = [
-        0xff0000, 0x00ff00, 0x0000ff, 0xff00ff, 
+        0xff0000, 0x00ff00, 0x0000ff, 0xff00ff,
         0xffff00, 0x00ffff, 0xff8000, 0x8000ff,
         0x0080ff, 0xff0080
     ];
@@ -718,7 +725,7 @@ function visualizeHoles(geometryData, parentMesh) {
 
         face.holes?.forEach(hole => {
             const holeMesh = new THREE.Mesh(holeGeometry, holeMaterial);
-            
+
             // Position hole
             holeMesh.position.set(
                 hole.position.x,
@@ -884,28 +891,44 @@ function findDirectoryByPath(paths, structure) {
     if (!Array.isArray(paths)) {
         paths = [paths];
     }
-    
+
     const normalizedSearchPaths = paths.map(path => normalizePath(path));
     let allContents = [];
-    
+
     function search(items, searchPath) {
         if (!items) return null;
-        
+
+        let contents = [];
+
         for (const item of items) {
             const normalizedItemPath = normalizePath(item.path);
-            
+
             if (item.type === 'directory') {
                 if (normalizedItemPath === searchPath) {
-                    return item.children;
+                    // Found the target directory, collect all contents recursively
+                    function collectContents(dirItems) {
+                        let results = [];
+                        if (!dirItems) return results;
+
+                        dirItems.forEach(dirItem => {
+                            results.push(dirItem);
+                            if (dirItem.type === 'directory' && dirItem.children) {
+                                results = results.concat(collectContents(dirItem.children));
+                            }
+                        });
+                        return results;
+                    }
+                    return collectContents(item.children);
                 }
-                
+
+                // Continue searching in subdirectories
                 const found = search(item.children, searchPath);
-                if (found) return found;
+                if (found) contents = contents.concat(found);
             }
         }
-        return null;
+        return contents.length > 0 ? contents : null;
     }
-    
+
     // Search for each path and combine results
     normalizedSearchPaths.forEach(searchPath => {
         const contents = search(structure, searchPath);
@@ -913,7 +936,7 @@ function findDirectoryByPath(paths, structure) {
             allContents = [...allContents, ...contents];
         }
     });
-    
+
     return allContents.length > 0 ? allContents : null;
 }
 async function getFileList(targetFolder) {
@@ -974,66 +997,88 @@ function createFolderId(path) {
 function updateMenuContent(menuElement) {
     const current = currentMenuPath[currentMenuPath.length - 1];
     if (!current || !current.folder) return;
-    
+
     let html = `
         <div class="menu-container">
             <div class="menu-header">
-                ${currentMenuPath.length > 1 ? 
-                    `<button class="back-button" onclick="navigateBack()">
+                ${currentMenuPath.length > 1 ?
+            `<button class="back-button" onclick="navigateBack()">
                         <span class="back-arrow"></span>
                         <span>Back</span>
-                     </button>` : 
-                    `<div class="menu-title">${current.title}</div>`}
+                     </button>` :
+            `<div class="menu-title">${current.title}</div>`}
             </div>
             <div class="menu-content">`;
-    
-    // Add directories first
-    const directories = current.folder.filter(item => item.type === 'directory');
-    directories.forEach(dir => {
-        let folderId;
-        if (current.isCustomMenu && dir.customData) {
-            // For custom menu items
-            folderId = createFolderId(dir.customData.path);
+
+    if (current.isCustomMenu) {
+        // Handle custom menu items
+        current.folder.forEach(dir => {
+            const folderId = createFolderId(dir.customData.path);
             menuState.set(folderId, {
                 customData: dir.customData,
                 title: dir.customData.title
             });
-        } else {
-            // For regular directories
+
+            html += `
+                <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
+                    <span class="folder-icon"></span>
+                    ${dir.customData.title}
+                </div>`;
+        });
+    } else {
+        // Get the normalized current base path
+        const currentBasePath = current.basePath.replace(/\\/g, '/');
+
+        // Filter items to only show direct children
+        const currentLevelItems = current.folder.filter(item => {
+            if (!item.path) return false;
+
+            const itemPath = item.path.replace(/\\/g, '/');
+            const relPath = itemPath.replace(currentBasePath, '').replace(/^\/+/, '');
+
+            // Only include items that are direct children (no additional path separators)
+            return !relPath.includes('/');
+        });
+
+        // Add directories first
+        const directories = currentLevelItems.filter(item => item.type === 'directory');
+        directories.forEach(dir => {
             const fullPath = `${current.basePath}/${dir.name}`.replace(/^\/+/, '');
-            folderId = createFolderId(fullPath);
+            const folderId = createFolderId(fullPath);
+
             menuState.set(folderId, {
-                folder: dir.children,
+                folder: dir.children || [],
                 basePath: fullPath,
                 title: dir.name
             });
-        }
-        
-        html += `
-            <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
-                <span class="folder-icon"></span>
-                ${dir.customData ? dir.customData.title : dir.name}
-            </div>`;
-    });
-    
-    // Then add STL files
-    const files = current.folder.filter(item => 
-        item.type === 'file' && 
-        item.name.toLowerCase().endsWith('.stl')
-    );
-    files.forEach(file => {
-        const fullPath = `${current.basePath}/${file.name}`.replace(/^\/+/, '');
-        html += `
-            <div class="menu-item file" onclick="event.stopPropagation(); attachModelAtPoint('${fullPath}')">
-                <span class="file-icon"></span>
-                <span class="file-name">${file.name.replace('.stl', '')}</span>
-            </div>`;
-    });
-    
+
+            html += `
+                <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
+                    <span class="folder-icon"></span>
+                    ${dir.name}
+                </div>`;
+        });
+
+        // Then add STL files
+        const files = currentLevelItems.filter(item =>
+            item.type === 'file' &&
+            item.name.toLowerCase().endsWith('.stl')
+        );
+
+        files.forEach(file => {
+            const fullPath = `${current.basePath}/${file.name}`.replace(/^\/+/, '');
+            html += `
+                <div class="menu-item file" onclick="event.stopPropagation(); attachModelAtPoint('${fullPath}')">
+                    <span class="file-icon"></span>
+                    <span class="file-name">${file.name.replace('.stl', '')}</span>
+                </div>`;
+        });
+    }
+
     html += `
             </div>
         </div>`;
-    
+
     menuElement.innerHTML = html;
 }
 function hideMenu() {
@@ -1049,23 +1094,61 @@ function navigateToFolder(folderId) {
         return;
     }
 
+    // Get current menu info
+    const currentMenu = currentMenuPath[currentMenuPath.length - 1];
+    const currentUserData = selectedPoint?.userData;
+
     if (folderData.customData) {
         // Handle custom menu navigation
         const directory = findDirectoryByPath(folderData.customData.path, directoryStructure);
         if (!directory) return;
 
-        const filteredContents = folderData.customData.filter ? 
-            directory.filter(item => folderData.customData.filter(item)) : 
+        const filteredContents = folderData.customData.filter ?
+            directory.filter(item => folderData.customData.filter(item, currentUserData)) :
             directory;
 
         currentMenuPath.push({
             folder: filteredContents,
             basePath: folderData.customData.path,
-            title: folderData.customData.title
+            title: folderData.customData.title,
+            filter: folderData.customData.filter,
+            userData: currentUserData
         });
     } else {
-        // Handle regular directory navigation
-        currentMenuPath.push(folderData);
+        // Check if we're in a regular menu or custom menu path
+        const menuType = selectedPoint?.userData?.attachmentType;
+        const menuConfig = categoryMenus[menuType];
+
+        // For regular menu navigation
+        if (menuConfig?.filter) {
+            // Apply the current menu's filter (handles part cooling)
+            const filteredContents = filterContents(folderData.folder, currentUserData);
+            
+            currentMenuPath.push({
+                ...folderData,
+                folder: filteredContents,
+                basePath: folderData.basePath,
+                title: folderData.title,
+                filter: menuConfig.filter,
+                userData: currentUserData
+            });
+        } else if (currentMenu?.filter) {
+            // Apply custom menu's filter (handles wing/custom menus)
+            const filteredContents = folderData.folder.filter(item => 
+                currentMenu.filter(item, currentUserData)
+            );
+            
+            currentMenuPath.push({
+                ...folderData,
+                folder: filteredContents,
+                basePath: folderData.basePath,
+                title: folderData.title,
+                filter: currentMenu.filter,
+                userData: currentUserData
+            });
+        } else {
+            currentMenuPath.push(folderData);
+        }
     }
 
     const menuElement = document.getElementById('modelSelect');
@@ -1154,15 +1237,15 @@ async function createAttachmentPoints(object) {
         if (!face) continue;
 
         assignedFaces.add(face);
-        
+
         const center = calculateHolePatternCenter(face.holes);
         const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
-        
+
         // Create main point
         const createPoint = (position, normal, suffix = '') => {
             const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
             position.add(normal.clone().multiplyScalar(5)); // 5mm offset from face
-            
+
             point.position.copy(position);
             point.userData.attachmentType = def.type;
             point.userData.attachmentName = def.type + suffix;
@@ -1233,7 +1316,7 @@ function getFilesFromCache(targetFolder) {
 }
 async function createDropdownForType(type) {
     console.log('Creating menu for type:', type);
-    
+
     menuState.clear();
     const menu = categoryMenus[type];
     if (!menu) return '';
@@ -1256,18 +1339,18 @@ async function createDropdownForType(type) {
         // Original directory-based menu code
         const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
         if (!directory) return '';
-        
-        const filteredContents = menu.filter ? 
-            filterContents(directory, selectedPoint?.userData) : 
+
+        const filteredContents = menu.filter ?
+            filterContents(directory, selectedPoint?.userData) :
             directory;
-        
+
         currentMenuPath = [{
             folder: filteredContents,
             basePath: menu.paths[0],
             title: menu.title
         }];
     }
-    
+
     const menuElement = document.createElement('div');
     updateMenuContent(menuElement);
     return menuElement.innerHTML;
@@ -1278,7 +1361,7 @@ function onMouseMove(event) {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
-    
+
     // Check attachment points
     const pointIntersects = raycaster.intersectObjects(attachmentPoints, true);
     attachmentPoints.forEach(point => {
@@ -1287,7 +1370,7 @@ function onMouseMove(event) {
             point.scale.setScalar(1);
         }
     });
-    
+
     if (pointIntersects.length > 0) {
         const point = pointIntersects[0].object;
         if (point.visible) {
@@ -1348,12 +1431,12 @@ async function onMouseClick(event) {
         const arrow = arrowIntersects[0].object;
         const model = arrow.userData.targetModel;
         const moveAmount = arrow.userData.moveAmount;
-        
+
         if (model.userData.attachmentType === 'probe') {
             // Move along Y axis for probes
             const newY = model.position.y + moveAmount;
             model.position.y = newY;
-            
+
             // Keep arrows in their original relative positions
             model.userData.positionControls.forEach(control => {
                 control.position.copy(control.userData.originalPosition);
@@ -1385,23 +1468,23 @@ async function onMouseClick(event) {
         selectedPoint = intersects[0].object;
         menuElement.innerHTML = await createDropdownForType(selectedPoint.userData.attachmentType);
         menuElement.style.display = 'block';
-        
+
         const menuWidth = 300;
         const menuHeight = Math.min(400, window.innerHeight * 0.8);
-        
+
         const spaceRight = window.innerWidth - event.clientX;
         const spaceBottom = window.innerHeight - event.clientY;
-        
+
         let x = event.clientX;
         if (spaceRight < menuWidth) {
             x = Math.max(0, window.innerWidth - menuWidth);
         }
-        
+
         let y = event.clientY;
         if (spaceBottom < menuHeight) {
             y = Math.max(0, window.innerHeight - menuHeight);
         }
-        
+
         menuElement.style.left = x + 'px';
         menuElement.style.top = y + 'px';
     } else if (!event.target.closest('#modelSelect')) {
@@ -1412,7 +1495,7 @@ async function onMouseClick(event) {
 function alignMountType(mesh, attachmentType, baseNormal, baseVec, attachNormal, attachVec) {
     switch (attachmentType) {
         case 'wing':
-            // First align faces
+            // Regular wing alignment
             const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
             mesh.quaternion.copy(normalQuat);
 
@@ -1524,11 +1607,11 @@ async function attachModelAtPoint(modelPath) {
         }
 
         const loader = new THREE.STLLoader();
-        loader.load(modelPath, function(geometry) {
+        loader.load(modelPath, function (geometry) {
             const material = new THREE.MeshPhongMaterial({
                 color: partColors[selectedPoint.userData.attachmentType] || 0xff0000,
                 flatShading: false,
-                transparent: true, 
+                transparent: true,
                 opacity: 1
             });
 
@@ -1556,18 +1639,18 @@ async function attachModelAtPoint(modelPath) {
                 if (baseGeometryData.slideFaces && attachGeometryData.slideFaces) {
                     const isDualDuct = attachGeometryData.slideFaces.length > 1;
                     window.currentAttachmentPath = modelPath;
-                    
-                    const availableBaseFaces = baseGeometryData.slideFaces.filter((group, index) => 
+
+                    const availableBaseFaces = baseGeometryData.slideFaces.filter((group, index) =>
                         !isPatternUsed(baseModelPath, { groupIndex: index })
                     );
-                    
-                    const availableAttachFaces = attachGeometryData.slideFaces.filter((group, index) => 
+
+                    const availableAttachFaces = attachGeometryData.slideFaces.filter((group, index) =>
                         !isPatternUsed(modelPath, { groupIndex: index })
                     );
-            
+
                     console.log('Available base slide faces:', availableBaseFaces.length);
                     console.log('Available attachment slide faces:', availableAttachFaces.length);
-                    
+
                     if (isDualDuct) {
                         markPatternAsUsed(baseModelPath, { groupIndex: 0 });
                         markPatternAsUsed(baseModelPath, { groupIndex: 1 });
@@ -1586,7 +1669,7 @@ async function attachModelAtPoint(modelPath) {
                             (baseGeometryData.slideFaces[0].faces[0].position.z + baseGeometryData.slideFaces[0].faces[1].position.z) / 2
                         );
                         const baseCenter = new THREE.Vector3().addVectors(baseCenterLeft, baseCenterRight).multiplyScalar(0.5);
-             
+
                         // Calculate centers of both attachment groups
                         const attachCenterLeft = new THREE.Vector3(
                             (attachGeometryData.slideFaces[0].faces[0].position.x + attachGeometryData.slideFaces[0].faces[1].position.x) / 2,
@@ -1599,7 +1682,7 @@ async function attachModelAtPoint(modelPath) {
                             (attachGeometryData.slideFaces[1].faces[0].position.z + attachGeometryData.slideFaces[1].faces[1].position.z) / 2
                         );
                         const attachCenter = new THREE.Vector3().addVectors(attachCenterLeft, attachCenterRight).multiplyScalar(0.5);
-             
+
                         // First align orientations to sky
                         const upVector = new THREE.Vector3(0, 0, 1);
                         const orientQuat = new THREE.Quaternion();
@@ -1617,16 +1700,16 @@ async function attachModelAtPoint(modelPath) {
                             attachGeometryData.slideFaces[0].faces[0].normal.y,
                             attachGeometryData.slideFaces[0].faces[0].normal.z
                         ).applyQuaternion(orientQuat);
-             
+
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormalLeft, baseNormalLeft.clone().negate());
                         mesh.quaternion.premultiply(normalQuat);
-             
+
                         // Position using combined centers
                         const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                         const offset = baseCenter.clone().sub(transformedAttachCenter);
                         mesh.position.copy(offset);
-             
+
                     } else {
                         // Single duct logic
                         const isRightSide = selectedPoint.userData.attachmentName.includes('opposite');
@@ -1690,25 +1773,25 @@ async function attachModelAtPoint(modelPath) {
 
                         mesh.position.copy(offset);
 
-                        
+
                     }
                 }
             } else if (selectedPoint.userData.parentModel && selectedPoint.userData.attachmentType === 'probe') {
                 window.currentAttachmentPath = modelPath;
-                
+
                 const baseGroupIndex = 0;
                 markPatternAsUsed(baseModelPath, { groupIndex: baseGroupIndex });
                 markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
-            
+
                 const baseGroup = baseGeometryData.slideFaces[0];
                 const attachGroup = attachGeometryData.slideFaces[0];
-            
+
                 // First align orientations to sky
                 const upVector = new THREE.Vector3(0, 0, 1);
                 const orientQuat = new THREE.Quaternion();
                 orientQuat.setFromUnitVectors(attachOrientation, upVector);
                 mesh.quaternion.copy(orientQuat);
-            
+
                 // Then align slide face normals
                 const baseNormal = new THREE.Vector3(
                     baseGroup.faces[0].normal.x,
@@ -1720,11 +1803,11 @@ async function attachModelAtPoint(modelPath) {
                     attachGroup.faces[0].normal.y,
                     attachGroup.faces[0].normal.z
                 ).applyQuaternion(orientQuat);
-            
+
                 const normalQuat = new THREE.Quaternion();
                 normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                 mesh.quaternion.premultiply(normalQuat);
-            
+
                 // Calculate centers for positioning
                 const baseCenter = new THREE.Vector3(
                     baseGroup.faces[0].position.x,
@@ -1736,12 +1819,12 @@ async function attachModelAtPoint(modelPath) {
                     attachGroup.faces[0].position.y,
                     attachGroup.faces[0].position.z
                 );
-            
+
                 // Position using centers
                 const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                 const offset = baseCenter.clone().sub(transformedAttachCenter);
                 mesh.position.copy(offset);
-            
+
                 if (attachGeometryData) {
                     mesh.userData.parentModel = selectedPoint.userData.parentModel;
                     visualizeHoles(attachGeometryData, mesh);
@@ -1759,7 +1842,7 @@ async function attachModelAtPoint(modelPath) {
                 // Handle other attachment types with hole patterns
                 const attachmentPointWorld = new THREE.Vector3();
                 selectedPoint.getWorldPosition(attachmentPointWorld);
-                
+
                 // For secondary attachments, transform point relative to parent model
                 const localPoint = attachmentPointWorld.clone()
                     .applyMatrix4((selectedPoint.userData.parentModel || mainModel).matrixWorld.clone().invert());
@@ -1772,10 +1855,10 @@ async function attachModelAtPoint(modelPath) {
                     closestFace = baseGeometryData.faces.find(face => face.faceId === selectedPoint.userData.faceId);
                 } else {
                     // Find appropriate face based on attachment type
-                    
-                    if (selectedPoint.userData.attachmentType === 'gantry' || 
+
+                    if (selectedPoint.userData.attachmentType === 'gantry' ||
                         selectedPoint.userData.attachmentType === 'gantryclip') {
-                        const availableFaces = baseGeometryData.faces.filter(face => 
+                        const availableFaces = baseGeometryData.faces.filter(face =>
                             !isHolePatternUsed(baseModelPath, face));
 
                         for (const face of availableFaces) {
@@ -1791,7 +1874,7 @@ async function attachModelAtPoint(modelPath) {
                             }
                         }
                     } else {
-                        const availableFaces = baseGeometryData.faces.filter(face => 
+                        const availableFaces = baseGeometryData.faces.filter(face =>
                             !isHolePatternUsed(baseModelPath, face));
 
                         for (const face of availableFaces) {
@@ -1841,7 +1924,7 @@ async function attachModelAtPoint(modelPath) {
                     );
 
                     // Handle specific attachment type alignments
-                    if (selectedPoint.userData.attachmentType === 'hotend' || 
+                    if (selectedPoint.userData.attachmentType === 'hotend' ||
                         selectedPoint.userData.attachmentType === 'directdrive') {
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
@@ -1893,7 +1976,7 @@ async function attachModelAtPoint(modelPath) {
                         if (dotX > dotY && dotX > dotZ) {
                             const rotQuat = new THREE.Quaternion().setFromAxisAngle(
                                 baseNormal,
-                                rotatedOrientation.x > 0 ? -Math.PI/2 : Math.PI/2
+                                rotatedOrientation.x > 0 ? -Math.PI / 2 : Math.PI / 2
                             );
                             mesh.quaternion.premultiply(rotQuat);
                         }
@@ -1946,12 +2029,16 @@ async function attachModelAtPoint(modelPath) {
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
                     } else {
-                        const orientQuat = new THREE.Quaternion();
-                        orientQuat.setFromUnitVectors(attachOrientation, baseOrientation);
+                        // First align the mount face normals
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                        const finalQuat = normalQuat.multiply(orientQuat);
-                        mesh.quaternion.copy(finalQuat);
+                        mesh.quaternion.copy(normalQuat);
+
+                        // Then align orientation after normal alignment
+                        const orientQuat = new THREE.Quaternion();
+                        const rotatedAttachOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+                        orientQuat.setFromUnitVectors(rotatedAttachOrientation, baseOrientation);
+                        mesh.quaternion.premultiply(orientQuat);
                     }
 
                     // Position based on pattern centers
@@ -1961,7 +2048,7 @@ async function attachModelAtPoint(modelPath) {
                     const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
                     mesh.position.copy(offset.add(normalOffset));
 
-                    
+
                 }
             }
 
@@ -1972,7 +2059,7 @@ async function attachModelAtPoint(modelPath) {
                 parentModel: parentModel,
                 parentInScene: mainModel.getObjectById(parentModel.id) !== undefined,
                 pointData: selectedPoint.userData
-            });            
+            });
             parentModel.add(mesh);
             attachedModels.set(selectedPoint, mesh);
             selectedPoint.visible = false;
@@ -2040,7 +2127,7 @@ function onWindowResize() {
 // Add double click handler to remove models
 function onDoubleClick(event) {
     raycaster.setFromCamera(mouse, camera);
-    
+
     const allArrows = [];
     attachedModels.forEach(model => {
         if (model.userData.positionControls) {
@@ -2051,13 +2138,13 @@ function onDoubleClick(event) {
     const arrowIntersects = raycaster.intersectObjects(allArrows)
         .filter(hit => hit.object.userData.type === 'positionControl');
     if (arrowIntersects.length > 0) return;
-    
+
     const attachedModelArray = Array.from(attachedModels.values());
     const intersects = raycaster.intersectObjects(attachedModelArray, true);
 
     if (intersects.length > 0) {
         let targetMesh = intersects[0].object;
-        
+
         // Find the first parent that has a modelPath
         while (targetMesh.parent && !targetMesh.userData?.modelPath) {
             targetMesh = targetMesh.parent;
@@ -2099,24 +2186,24 @@ function onDoubleClick(event) {
                 // Remove each child
                 childrenToRemove.forEach(({ model: childModel, point: childPoint }) => {
                     console.log('Removing child:', childModel.userData.modelPath);
-                    
+
                     // Remove child's arrows
                     if (childModel.userData.positionControls) {
                         childModel.userData.positionControls.forEach(arrow => {
                             if (arrow.parent) arrow.parent.remove(arrow);
                         });
                     }
-                    
+
                     // Reset child's patterns
                     if (childModel.userData.modelPath) {
                         resetPatterns(childModel.userData.modelPath, false);
                     }
-                    
+
                     // Remove child from scene
                     if (childModel.parent) {
                         childModel.parent.remove(childModel);
                     }
-                    
+
                     // Show attachment point and clean up tracking
                     childPoint.visible = true;
                     attachedModels.delete(childPoint);
@@ -2133,7 +2220,7 @@ function onDoubleClick(event) {
             if (targetMesh.parent) {
                 targetMesh.parent.remove(targetMesh);
             }
-            
+
             // Show attachment point and remove from tracking
             targetPoint.visible = true;
             attachedModels.delete(targetPoint);
@@ -2149,15 +2236,15 @@ function onDoubleClick(event) {
 }
 function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, attachOrientation, isRightSide = false) {
     console.log('Finding matching slide faces');
-    
+
     // First determine if this is a dual-sided duct by counting groups
     const isDualSided = attachmentFaces.length > 1;
     console.log(`Attachment is ${isDualSided ? 'dual-sided' : 'single-sided'}`);
-    
+
     // Get the appropriate groups based on side
     let targetBaseGroup = isRightSide ? baseFaces[1] : baseFaces[0];
     const targetAttachGroup = attachmentFaces[0]; // Always use first group, we'll mirror if needed
-    
+
     // Orient both models upward first
     const upVector = new THREE.Vector3(0, 1, 0);
     const baseOrientQuat = new THREE.Quaternion().setFromUnitVectors(baseOrientation, upVector);
@@ -2176,7 +2263,7 @@ function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, att
             isRightSide
         };
     }
-    
+
     return null;
 }
 
@@ -2185,7 +2272,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
         console.log('Missing faces in one or both groups');
         return 0;
     }
-    
+
     if (group1.faces.length !== group2.faces.length) {
         console.log('Different number of faces:', group1.faces.length, 'vs', group2.faces.length);
         return 0;
@@ -2204,7 +2291,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
 
         // Compare each distance
         group1.distances.forEach(dist1 => {
-            const matchingDist = group2.distances.find(dist2 => 
+            const matchingDist = group2.distances.find(dist2 =>
                 Math.abs(dist1.distance - dist2.distance) < tolerance
             );
             if (matchingDist) {
@@ -2217,7 +2304,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
         console.log('Distance match score:', score);
         return score;
     }
-    
+
     console.log('Missing distances in one or both groups');
     return 0;
 }
@@ -2237,31 +2324,31 @@ function createPositionArrows(attachedModel) {
     const downArrow = new THREE.Mesh(arrowGeometry, arrowMaterial.clone());
 
     if (attachedModel.userData.attachmentType === 'probe') {
-        upArrow.rotation.x = -Math.PI/2;
-        downArrow.rotation.x = Math.PI/2;
-        
+        upArrow.rotation.x = -Math.PI / 2;
+        downArrow.rotation.x = Math.PI / 2;
+
         // Wider spacing for probe arrows
         upArrow.position.set(0, 0, 25);
         downArrow.position.set(0, 0, -25);
     } else {
         // Part cooling positioning
-        upArrow.rotation.x = -Math.PI/2;
-        downArrow.rotation.x = Math.PI/2;
-        
+        upArrow.rotation.x = -Math.PI / 2;
+        downArrow.rotation.x = Math.PI / 2;
+
         // Calculate center of the duct using bounding box
         const bbox = new THREE.Box3().setFromObject(attachedModel);
         const center = bbox.getCenter(new THREE.Vector3());
-        
+
         // Position arrows with backward offset and wider spacing
         upArrow.position.copy(center);
         downArrow.position.copy(center);
-        
+
         // Base position: backward 30mm in Y, down 20mm in Z, then spread from there
         upArrow.position.y -= 30;
         downArrow.position.y -= 30;
         upArrow.position.z -= 20;      // Move down
         downArrow.position.z -= 20;    // Move down
-        
+
         // Then add the up/down spread
         upArrow.position.z += 35;      // Spread up from base position
         downArrow.position.z -= 35;    // Spread down from base position
@@ -2319,7 +2406,7 @@ function onMouseDown(event) {
                     const model = selectedArrow.userData.targetModel;
                     const moveAxis = model.userData.moveAxis.clone();
                     moveAxis.applyQuaternion(model.quaternion);
-                    
+
                     const moveVector = moveAxis.multiplyScalar(selectedArrow.userData.moveAmount);
                     model.position.add(moveVector);
                 }
@@ -2332,7 +2419,7 @@ function onMouseUp(event) {
     controls.enabled = true;
     isMovingPart = false;
     selectedArrow = null;
-    
+
     if (moveInterval) {
         clearInterval(moveInterval);
         moveInterval = null;
@@ -2360,9 +2447,9 @@ function markPatternAsUsed(modelPath, pattern) {
 // Function to check if a hole pattern is already used
 function isPatternUsed(modelPath, pattern) {
     if (!usedPatterns.has(modelPath)) return false;
-    
+
     const modelPatterns = usedPatterns.get(modelPath);
-    
+
     if (pattern.faceId !== undefined) {
         const isUsed = usedHolePatterns.has(modelPath) &&
             usedHolePatterns.get(modelPath).has(pattern.faceId);
@@ -2373,17 +2460,17 @@ function isPatternUsed(modelPath, pattern) {
         console.log(`Checking if slide face group ${pattern.groupIndex} is used for model ${modelPath}: ${isUsed}`);
         return isUsed;
     }
-    
+
     return false;
 }
 // Function to reset used patterns for a model
 function resetPatterns(modelPath, isParent = false) {
     console.log(`Resetting patterns for model ${modelPath} (isParent: ${isParent})`);
-    
+
     // Always clear direct patterns
     usedHolePatterns.delete(modelPath);
     usedPatterns.delete(modelPath);
-    
+
     // For parent models, also clear patterns of all child models
     if (isParent) {
         attachedModels.forEach((model, point) => {
@@ -2394,7 +2481,7 @@ function resetPatterns(modelPath, isParent = false) {
             }
         });
     }
-    
+
     debugPatternTracking();
 }
 // Function to get all used patterns for a model
@@ -2426,31 +2513,31 @@ function debugPatternTracking() {
 // Helper function for finding matching slide faces with pattern tracking
 function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, attachOrientation, isRightSide = false) {
     console.log('Finding matching slide faces');
-    
+
     const isDualSided = attachmentFaces.length > 1;
     console.log(`Attachment is ${isDualSided ? 'dual-sided' : 'single-sided'}`);
-    
+
     // Filter out used slide faces
-    const availableBaseFaces = baseFaces.filter((group, index) => 
+    const availableBaseFaces = baseFaces.filter((group, index) =>
         !isPatternUsed('heromedir/base/UniversalBase.stl', { groupIndex: index })
     );
-    
-    const availableAttachFaces = attachmentFaces.filter((group, index) => 
+
+    const availableAttachFaces = attachmentFaces.filter((group, index) =>
         !isPatternUsed(window.currentAttachmentPath, { groupIndex: index })
     );
-    
+
     console.log('Available base slide faces:', availableBaseFaces.length);
     console.log('Available attachment slide faces:', availableAttachFaces.length);
-    
+
     // Get the appropriate groups based on side
     let targetBaseGroup = isRightSide ? availableBaseFaces[1] : availableBaseFaces[0];
     const targetAttachGroup = availableAttachFaces[0];
-    
+
     if (!targetBaseGroup || !targetAttachGroup) {
         console.log('No available slide faces found');
         return null;
     }
-    
+
     const upVector = new THREE.Vector3(0, 1, 0);
     const baseOrientQuat = new THREE.Quaternion().setFromUnitVectors(baseOrientation, upVector);
     const attachOrientQuat = new THREE.Quaternion().setFromUnitVectors(attachOrientation, upVector);
@@ -2463,7 +2550,7 @@ function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, att
         const baseGroupIndex = isRightSide ? 1 : 0;
         markPatternAsUsed('heromedir/base/UniversalBase.stl', { groupIndex: baseGroupIndex });
         markPatternAsUsed(window.currentAttachmentPath, { groupIndex: 0 });
-        
+
         return {
             baseGroup: targetBaseGroup,
             attachGroup: targetAttachGroup,
@@ -2473,14 +2560,14 @@ function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, att
             isRightSide
         };
     }
-    
+
     return null;
 }
 
 // Function to check if a hole pattern is already used
 function isHolePatternUsed(modelPath, face) {
-    const isUsed = usedHolePatterns.has(modelPath) && 
-                  usedHolePatterns.get(modelPath).has(face.faceId);
+    const isUsed = usedHolePatterns.has(modelPath) &&
+        usedHolePatterns.get(modelPath).has(face.faceId);
     console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
     return isUsed;
 }
@@ -2507,7 +2594,7 @@ async function createSecondaryAttachmentPoints(model) {
     if (compatibleTypes.length === 0) return;
 
     // Filter out faces that are already in use
-    const availableFaces = geometryData.faces.filter(face => 
+    const availableFaces = geometryData.faces.filter(face =>
         !isHolePatternUsed(model.userData.modelPath, face) &&
         face.holes?.length > 0
     );
@@ -2515,12 +2602,12 @@ async function createSecondaryAttachmentPoints(model) {
     availableFaces.forEach(face => {
         const center = calculateHolePatternCenter(face.holes);
         const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
-        
+
         // Create attachment point
         const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
         center.add(normal.clone().multiplyScalar(5)); // 5mm offset
         point.position.copy(center);
-        
+
         // Assign properties for the first compatible type
         const attachmentType = compatibleTypes[0];
         point.userData = {
@@ -2541,7 +2628,7 @@ async function createSecondaryAttachmentPoints(model) {
 }
 function alignSecondaryModel(mesh, attachPoint, baseGeometryData, attachGeometryData) {
     const parentModel = attachPoint.userData.parentModel;
-    
+
     // Find the face we're attaching to
     const attachToFace = baseGeometryData.faces.find(f => f.faceId === attachPoint.userData.faceId);
     if (!attachToFace) return;
@@ -2553,13 +2640,13 @@ function alignSecondaryModel(mesh, attachPoint, baseGeometryData, attachGeometry
     // Calculate centers and normals
     const baseCenter = calculateHolePatternCenter(attachToFace.holes);
     const attachCenter = calculateHolePatternCenter(matchingFace.holes);
-    
+
     const baseNormal = new THREE.Vector3(
         attachToFace.normal.x,
         attachToFace.normal.y,
         attachToFace.normal.z
     );
-    
+
     const attachNormal = new THREE.Vector3(
         matchingFace.normal.x,
         matchingFace.normal.y,
@@ -2590,7 +2677,7 @@ function resetUIState() {
 }
 function cleanupOrphanedPatterns() {
     const activeModelPaths = new Set();
-    
+
     // Collect all active model paths
     mainModel.traverse((obj) => {
         if (obj.userData?.modelPath) {
@@ -2628,40 +2715,40 @@ function cleanupOrphanedPatterns() {
 // Function to filter directory contents based on menu configuration
 function filterContents(contents, userData) {
     if (!contents) return [];
-    
+
+    console.log('=== Filter Debug Info ===');
+    console.log('Filtering with userData:', userData);
+    console.log('Selected point userData:', selectedPoint?.userData);
+    console.log('Menu type:', selectedPoint?.userData?.attachmentType);
+
     return contents.filter(item => {
         // If it's a directory, always include it
-        if (item.type === 'directory') return true;
-        
+        if (item.type === 'directory') {
+            console.log('Directory, including:', item.name);
+            return true;
+        }
+
         // Filter out non-STL files
-        if (!item.name.toLowerCase().endsWith('.stl')) return false;
-        
+        if (!item.name.toLowerCase().endsWith('.stl')) {
+            console.log('Not an STL, excluding:', item.name);
+            return false;
+        }
+
         // Get menu configuration for the current type
         const menu = categoryMenus[selectedPoint?.userData?.attachmentType];
-        if (!menu?.filter) return true;
-        
-        const name = item.name.toLowerCase();
-        const isRightSide = userData?.attachmentName?.includes('opposite');
-        
-        // Check for side-specific naming conventions
-        if (item.type === 'file' && name.endsWith('.stl')) {
-            // For right side points
-            if (isRightSide) {
-                if (name.includes('left') && !name.includes('right')) {
-                    return false;
-                }
-            } 
-            // For left side points
-            else {
-                if (name.includes('right') && !name.includes('left')) {
-                    return false;
-                }
-            }
+        if (!menu?.filter) {
+            console.log('No filter defined, including:', item.name);
+            return true;
         }
-        
-        // Apply the menu's additional filter function if it exists
-        return menu.filter(item, userData);
+
+        // Debug each filter call
+        const filterResult = menu.filter(item, userData);
+        console.log(`Filtering ${item.name} - Result:`, filterResult);
+        console.log('Used criteria:', {
+            isRightSide: userData?.attachmentName?.includes('opposite'),
+            name: item.name.toLowerCase()
+        });
+        return filterResult;
     });
 }
-
 init();

@@ -1,0 +1,103 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 3.39,
+          "position": {
+            "x": 15.01,
+            "y": -8.73,
+            "z": 3.18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 3.41,
+          "position": {
+            "x": -14.99,
+            "y": -8.72,
+            "z": 3.18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 30,
+          "axis": "X"
+        }
+      ]
+    },
+    {
+      "faceId": 2,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": -1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 7.58,
+          "position": {
+            "x": -14.98,
+            "y": -8.9,
+            "z": -3.18
+          },
+          "rotation": {
+            "x": -180,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 7.78,
+          "position": {
+            "x": 14.99,
+            "y": -8.77,
+            "z": -3.18
+          },
+          "rotation": {
+            "x": -180,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ],
+      "alignedDistances": []
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "rotation": {
+      "x": -180,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "totalHoles": 4,
+  "timestamp": "2025-01-11T00:29:11.338Z"
+}
