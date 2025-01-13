@@ -146,9 +146,34 @@ const categoryMenus = {
         parentType: 'gantry' // Only attach to gantry adapters
     },
     directdrive: {
-        title: "Direct Drive Mounts",
-        paths: ["heromedir/directdrivemounts"],
-        parentType: 'hotend' // Only attach to hotend mounts
+        title: "Direct Drive Options",
+        isCustomMenu: true,
+        createCustomMenu: (userData) => {
+            return {
+                type: 'category',
+                items: [
+                    {
+                        title: "Direct Drive Mounts",
+                        path: "heromedir/directdrivemounts",
+                        attachmentType: "directdrive",
+                        filter: (item) => {
+                            const name = item.name.toLowerCase();
+                            return item.type === 'directory' || (name.endsWith('.stl') && !name.includes('riser'));
+                        }
+                    },
+                    {
+                        title: "Riser/Spacer",
+                        path: "heromedir/directdrivemounts",
+                        attachmentType: "spacer",
+                        filter: (item) => {
+                            const name = item.name.toLowerCase();
+                            return item.type === 'directory' || (name.endsWith('.stl') && name.includes('riser'));
+                        }
+                    }
+                ]
+            };
+        },
+        parentType: ['hotend', 'spacer']
     }
 };
 const partColors = {
@@ -161,7 +186,8 @@ const partColors = {
     'probe': 0xff8c00,     // Orange
     'adxl': 0xa159e4,      // Pastel Purple
     'gantryclip': 0x91cdcf, // Light Blue
-    'directdrive': 0xdfe081 // Pastellow
+    'directdrive': 0xdfe081, // Pastellow
+    'spacer': 0xb19cd9     // Light Purple
 };
 // Function to load and cache geometry data from JSON
 async function loadGeometryData(modelPath) {
@@ -210,99 +236,7 @@ async function loadGeometryData(modelPath) {
 }
 
 // Function to find matching hole patterns between two faces
-function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
-    console.log('\n=== Finding Matches Between Faces ===');
-    console.log('Base face ID:', baseFace.faceId);
-    console.log('Base face holes:', baseFace.holes.length);
-    console.log('Current model path:', window.currentAttachmentPath);
-    debugPatternTracking();
 
-    let bestMatch = null;
-    let maxScore = 0;
-    let bestTransform = null;
-
-    // For gantries, prioritize 4-hole faces
-    const facesToCheck = attachmentType === 'gantry'
-        ? attachmentFaces.filter(face => face.holes.length === 4)
-        : attachmentFaces;
-
-    // Filter out already used faces
-    const availableFaces = facesToCheck.filter(face =>
-        !isHolePatternUsed(window.currentAttachmentPath, face));
-
-    for (const attachFace of availableFaces) {
-        // Try different rotation combinations
-        const rotations = [
-            { x: 0, y: 0, z: 0 },
-            { x: 0, y: 0, z: Math.PI / 2 },
-            { x: 0, y: 0, z: Math.PI },
-            { x: 0, y: 0, z: -Math.PI / 2 },
-            { x: Math.PI / 2, y: 0, z: 0 },
-            { x: -Math.PI / 2, y: 0, z: 0 },
-            { x: 0, y: Math.PI / 2, z: 0 },
-            { x: 0, y: -Math.PI / 2, z: 0 }
-        ];
-
-        for (const rotation of rotations) {
-            const tempQuat = new THREE.Quaternion();
-            tempQuat.setFromEuler(new THREE.Euler(rotation.x, rotation.y, rotation.z));
-
-            const rotatedHoles = attachFace.holes.map(hole => {
-                const pos = new THREE.Vector3(hole.position.x, hole.position.y, hole.position.z);
-                pos.applyQuaternion(tempQuat);
-                return {
-                    ...hole,
-                    position: {
-                        x: pos.x,
-                        y: pos.y,
-                        z: pos.z
-                    }
-                };
-            });
-
-            const rotatedFace = {
-                ...attachFace,
-                holes: rotatedHoles
-            };
-
-            const score = compareHolePatterns(baseFace, rotatedFace);
-            if (score > maxScore) {
-                maxScore = score;
-                bestMatch = attachFace;
-                bestTransform = {
-                    rotation: tempQuat,
-                    score: score
-                };
-            }
-        }
-    }
-
-    if (bestMatch && bestTransform && maxScore > 0.6) {
-        bestMatch.bestTransform = bestTransform;
-        console.log('Best match found with score:', maxScore);
-
-        // Create mapping objects for both the mesh and the pattern tracking
-        const patternMapping = {
-            baseFaceId: baseFace.faceId,
-            attachmentFaceId: bestMatch.faceId,
-            baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath || 'heromedir/base/UniversalBase.stl',
-            attachmentModelPath: window.currentAttachmentPath
-        };
-
-        // Store the mapping on the face for transfer to the mesh
-        bestMatch.patternMapping = patternMapping;
-
-        // Mark patterns as used
-        markPatternAsUsed(patternMapping.baseModelPath, { faceId: patternMapping.baseFaceId });
-        markPatternAsUsed(patternMapping.attachmentModelPath, { faceId: patternMapping.attachmentFaceId });
-
-        console.log('Created pattern mapping:', patternMapping);
-        debugPatternTracking();
-
-        return bestMatch;
-    }
-    return null;
-}
 
 function isValidPosition(pos) {
     return pos &&
@@ -318,7 +252,7 @@ function isValidHole(hole) {
 }
 
 // Function to compare hole patterns between faces
-function compareHolePatterns(face1, face2) {
+function compareHolePatterns(face1, face2, isRiser = false) {
     if (!face1?.holes?.length || !face2?.holes?.length) {
         console.log('Missing holes in one or both faces');
         return 0;
@@ -344,33 +278,53 @@ function compareHolePatterns(face1, face2) {
 
     // Try normal comparison first
     let bestMatchCount = 0;
-
-    // First try original order
     const tolerance = 1.0;
-    let matchCount = 0;
-    for (let i = 0; i < distances1.length; i++) {
-        const diff = Math.abs(distances1[i] - distances2[i]);
-        console.log(`Distance comparison ${i}: ${distances1[i]} vs ${distances2[i]}, diff: ${diff}`);
-        if (diff <= tolerance) {
-            matchCount++;
-        }
-    }
-    bestMatchCount = matchCount;
 
-    // Then try rotating/swapping groups of distances
-    // For a rectangular pattern, distances will come in pairs
-    if (distances1.length === 4) { // For 4-hole rectangular patterns
-        const rotatedDistances2 = [distances2[2], distances2[3], distances2[0], distances2[1]];
-        matchCount = 0;
+    // For risers, create a mirrored version of distances2
+    if (isRiser) {
+        // Mirror the second set of holes before calculating distances
+        const mirroredHoles = face2.holes.map(hole => ({
+            ...hole,
+            position: {
+                x: -hole.position.x,  // Mirror across YZ plane
+                y: hole.position.y,
+                z: hole.position.z
+            }
+        }));
+        const mirroredDistances = calculateInterHoleDistances(mirroredHoles);
+        
+        let matchCount = 0;
         for (let i = 0; i < distances1.length; i++) {
-            const diff = Math.abs(distances1[i] - rotatedDistances2[i]);
-            console.log(`Rotated comparison ${i}: ${distances1[i]} vs ${rotatedDistances2[i]}, diff: ${diff}`);
+            const diff = Math.abs(distances1[i] - mirroredDistances[i]);
             if (diff <= tolerance) {
                 matchCount++;
             }
         }
-        if (matchCount > bestMatchCount) {
-            bestMatchCount = matchCount;
+        bestMatchCount = matchCount;
+    } else {
+        // Normal matching logic
+        let matchCount = 0;
+        for (let i = 0; i < distances1.length; i++) {
+            const diff = Math.abs(distances1[i] - distances2[i]);
+            if (diff <= tolerance) {
+                matchCount++;
+            }
+        }
+        bestMatchCount = matchCount;
+
+        // Try rotating pattern for rectangular patterns
+        if (distances1.length === 4) {
+            const rotatedDistances2 = [distances2[2], distances2[3], distances2[0], distances2[1]];
+            matchCount = 0;
+            for (let i = 0; i < distances1.length; i++) {
+                const diff = Math.abs(distances1[i] - rotatedDistances2[i]);
+                if (diff <= tolerance) {
+                    matchCount++;
+                }
+            }
+            if (matchCount > bestMatchCount) {
+                bestMatchCount = matchCount;
+            }
         }
     }
 
@@ -1097,23 +1051,31 @@ function navigateToFolder(folderId) {
     // Get current menu info
     const currentMenu = currentMenuPath[currentMenuPath.length - 1];
     const currentUserData = selectedPoint?.userData;
-
+    
     if (folderData.customData) {
-        // Handle custom menu navigation
-        const directory = findDirectoryByPath(folderData.customData.path, directoryStructure);
-        if (!directory) return;
+    // Handle custom menu navigation
+    const directory = findDirectoryByPath(folderData.customData.path, directoryStructure);
+    if (!directory) return;
 
-        const filteredContents = folderData.customData.filter ?
-            directory.filter(item => folderData.customData.filter(item, currentUserData)) :
-            directory;
+    const filteredContents = folderData.customData.filter ?
+        directory.filter(item => folderData.customData.filter(item, currentUserData)) :
+        directory;
 
-        currentMenuPath.push({
-            folder: filteredContents,
-            basePath: folderData.customData.path,
-            title: folderData.customData.title,
-            filter: folderData.customData.filter,
-            userData: currentUserData
-        });
+    // Update selectedPoint's attachmentType if one was specified in the custom menu
+    if (folderData.customData.attachmentType && selectedPoint) {
+        selectedPoint.userData.attachmentType = folderData.customData.attachmentType;
+    }
+
+    currentMenuPath.push({
+        folder: filteredContents,
+        basePath: folderData.customData.path,
+        title: folderData.customData.title,
+        filter: folderData.customData.filter,
+        userData: {
+            ...currentUserData,
+            attachmentType: folderData.customData.attachmentType || currentUserData?.attachmentType
+        }
+    });
     } else {
         // Check if we're in a regular menu or custom menu path
         const menuType = selectedPoint?.userData?.attachmentType;
@@ -1529,75 +1491,6 @@ async function onMouseClick(event) {
         menuElement.style.display = 'none';
     }
 }
-function alignMountType(mesh, attachmentType, baseNormal, baseVec, attachNormal, attachVec) {
-    switch (attachmentType) {
-        case 'wing':
-            // Regular wing alignment
-            const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-            mesh.quaternion.copy(normalQuat);
-
-            // Get world vectors after face alignment
-            const rightVec = new THREE.Vector3(1, 0, 0);
-            const upVec = new THREE.Vector3(0, 1, 0);
-
-            // Create rotation to align wing along X axis with Y up
-            const wingQuat = new THREE.Quaternion();
-            const rotatedUp = upVec.clone().applyQuaternion(mesh.quaternion);
-            const rotatedRight = rightVec.clone().applyQuaternion(mesh.quaternion);
-
-            const correctionQuat = new THREE.Quaternion().setFromUnitVectors(
-                rotatedRight,
-                rightVec
-            );
-            mesh.quaternion.premultiply(correctionQuat);
-            break;
-
-        case 'hotend':
-            // Start by pointing down (-Y)
-            const downQuat = new THREE.Quaternion().setFromUnitVectors(
-                attachNormal,
-                new THREE.Vector3(0, -1, 0)
-            );
-            mesh.quaternion.copy(downQuat);
-
-            // Get the rotated hole vector
-            const rotatedAttachVec = attachVec.clone().applyQuaternion(downQuat);
-            const rotatedBaseVec = baseVec.clone();
-
-            // Calculate angle between hole vectors on XZ plane
-            const angleQuat = new THREE.Quaternion().setFromAxisAngle(
-                new THREE.Vector3(0, -1, 0),
-                Math.atan2(
-                    rotatedBaseVec.z * rotatedAttachVec.x - rotatedBaseVec.x * rotatedAttachVec.z,
-                    rotatedBaseVec.x * rotatedAttachVec.x + rotatedBaseVec.z * rotatedAttachVec.z
-                )
-            );
-            mesh.quaternion.premultiply(angleQuat);
-            break;
-
-        case 'fanguard':
-            // First align mounting faces
-            const fanNormalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal);
-            mesh.quaternion.copy(fanNormalQuat);
-
-            // Add 180° rotation around the base normal
-            const rotationQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-            mesh.quaternion.premultiply(rotationQuat);
-
-            // Add alignment to keep fan guard vertical
-            const upVector = new THREE.Vector3(0, 1, 0);
-            const currentUp = upVector.clone().applyQuaternion(mesh.quaternion);
-            const alignQuat = new THREE.Quaternion();
-            alignQuat.setFromUnitVectors(currentUp, upVector);
-            mesh.quaternion.premultiply(alignQuat);
-            break;
-
-        default:
-            const defaultQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-            mesh.quaternion.copy(defaultQuat);
-            break;
-    }
-}
 async function attachModelAtPoint(modelPath) {
     if (!selectedPoint || !modelPath) return;
 
@@ -1614,7 +1507,7 @@ async function attachModelAtPoint(modelPath) {
             console.error('Failed to load geometry data');
             return;
         }
-
+        
         // Get orientation from both models
         const baseOrientation = new THREE.Vector3(
             baseGeometryData.orientationFace.normal.x,
@@ -1659,7 +1552,11 @@ async function attachModelAtPoint(modelPath) {
                 holes: new Set([...getUsedPatterns(baseModelPath)]),
                 slides: new Set([...(usedPatterns.get(baseModelPath)?.slides || [])])
             };
-
+            console.log('🚨 CREATED MESH:', {
+                type: selectedPoint.userData.attachmentType,
+                modelPath: modelPath,
+                color: partColors[selectedPoint.userData.attachmentType] || 0xff0000
+            });
             // Store used patterns based on attachment type
             if (selectedPoint.userData.attachmentType === 'partcooling') {
                 mesh.userData.usedSlides = new Set([...(usedPatterns.get(baseModelPath)?.slides || [])]);
@@ -1963,18 +1860,29 @@ async function attachModelAtPoint(modelPath) {
                     // Handle specific attachment type alignments
                     if (selectedPoint.userData.attachmentType === 'hotend' ||
                         selectedPoint.userData.attachmentType === 'directdrive') {
+                            console.log('🚨🚨🚨 USING BACKUP ALIGMNMENT');
+                        // First align normals
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
-                        if (selectedPoint.userData.attachmentType === 'directdrive') {
+                        
+                        // Determine if this is a spacer/riser by checking either the type or filename
+                        const isRiser = selectedPoint.userData.attachmentType === 'spacer' || 
+                                      modelPath.toLowerCase().includes('riser');
+                        
+                        if (selectedPoint.userData.attachmentType === 'directdrive' || isRiser) {
+                            // Apply 180° rotation for both directdrive and spacers/risers
                             const rotateQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                             mesh.quaternion.premultiply(rotateQuat);
                         }
-                        const rotatedOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+                        
+                        // Check and correct orientation if needed
+                        const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
                         if (rotatedOrientation.y < 0) {
                             const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
                             mesh.quaternion.premultiply(flipQuat);
                         }
+                        
                     } else if (selectedPoint.userData.attachmentType === 'fanguard') {
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
@@ -2066,6 +1974,7 @@ async function attachModelAtPoint(modelPath) {
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
                     } else {
+                        console.log('🚨🚨🚨 USING BACKUP ALIGMNMENT');
                         // First align the mount face normals
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
@@ -2077,7 +1986,7 @@ async function attachModelAtPoint(modelPath) {
                         orientQuat.setFromUnitVectors(rotatedAttachOrientation, baseOrientation);
                         mesh.quaternion.premultiply(orientQuat);
                     }
-
+                    
                     // Position based on pattern centers
                     const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                     const offset = baseCenter.clone().sub(transformedAttachCenter);
@@ -2110,7 +2019,10 @@ async function attachModelAtPoint(modelPath) {
 
             // Create secondary attachment points if applicable
             const menuConfig = categoryMenus[selectedPoint.userData.attachmentType];
-            if (!menuConfig?.parentType) {  // Only create points if this isn't already a secondary attachment
+            const isRiser = mesh.userData.modelPath.toLowerCase().includes('riser');
+
+            // Create points if this isn't a secondary attachment OR if it's a riser
+            if (!menuConfig?.parentType || isRiser) {
                 createSecondaryAttachmentPoints(mesh).then(() => {
                     // Reset UI after points are created
                     const dropdown = document.querySelector('.dropdown');
@@ -2127,7 +2039,6 @@ async function attachModelAtPoint(modelPath) {
                 selectedPoint = null;
                 renderer.render(scene, camera);
             }
-
             // Initial render
             const dropdown = document.querySelector('.dropdown');
             if (dropdown) dropdown.value = '';
@@ -2271,34 +2182,114 @@ function onDoubleClick(event) {
         }
     }
 }
-function findMatchingSlideFaces(baseFaces, attachmentFaces, baseOrientation, attachOrientation, isRightSide = false) {
-    console.log('Finding matching slide faces');
+function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
+    console.log('\n=== Finding Matches Between Faces ===');
+    console.log('Base face ID:', baseFace.faceId);
+    console.log('Base face holes:', baseFace.holes.length);
+    console.log('Current model path:', window.currentAttachmentPath);
+    console.log('Attachment type:', attachmentType);
 
-    // First determine if this is a dual-sided duct by counting groups
-    const isDualSided = attachmentFaces.length > 1;
-    console.log(`Attachment is ${isDualSided ? 'dual-sided' : 'single-sided'}`);
+    // Special case for spacers
+    if (attachmentType === 'spacer') {
+        console.log('🚨🚨🚨 SPACER IN FINDMATCHINGFACES');
+        // Just find first available face with right number of holes
+        const attachFace = attachmentFaces.find(face => 
+            face.holes?.length === baseFace.holes.length &&
+            !isHolePatternUsed(window.currentAttachmentPath, face));
 
-    // Get the appropriate groups based on side
-    let targetBaseGroup = isRightSide ? baseFaces[1] : baseFaces[0];
-    const targetAttachGroup = attachmentFaces[0]; // Always use first group, we'll mirror if needed
+        if (!attachFace) {
+            console.error('No available face found for spacer');
+            return null;
+        }
 
-    // Orient both models upward first
-    const upVector = new THREE.Vector3(0, 1, 0);
-    const baseOrientQuat = new THREE.Quaternion().setFromUnitVectors(baseOrientation, upVector);
-    const attachOrientQuat = new THREE.Quaternion().setFromUnitVectors(attachOrientation, upVector);
-
-    const score = compareSlideFaceGroups(targetBaseGroup, targetAttachGroup);
-    console.log('Match score:', score);
-
-    if (score > 0.6) {
-        return {
-            baseGroup: targetBaseGroup,
-            attachGroup: targetAttachGroup,
-            baseOrientQuat,
-            attachOrientQuat,
-            score,
-            isRightSide
+        // Set up pattern mapping for tracking
+        const patternMapping = {
+            baseFaceId: baseFace.faceId,
+            attachmentFaceId: attachFace.faceId,
+            baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath,
+            attachmentModelPath: window.currentAttachmentPath
         };
+
+        // Mark the patterns as used
+        markPatternAsUsed(patternMapping.baseModelPath, { faceId: patternMapping.baseFaceId });
+        markPatternAsUsed(patternMapping.attachmentModelPath, { faceId: patternMapping.attachmentFaceId });
+
+        // For spacers, don't bother with complex transforms - just copy parent and flip
+        attachFace.bestTransform = {
+            rotation: new THREE.Quaternion(),  // Will be ignored, parent transform used instead
+            score: 1.0
+        };
+
+        attachFace.patternMapping = patternMapping;
+        return attachFace;
+    }
+
+    // Original face matching logic for all other types
+    let bestMatch = null;
+    let maxScore = 0;
+    let bestTransform = null;
+
+    const availableFaces = attachmentFaces.filter(face =>
+        !isHolePatternUsed(window.currentAttachmentPath, face));
+
+    const isRiser = window.currentAttachmentPath.toLowerCase().includes('riser');
+
+    for (const attachFace of availableFaces) {
+        // Rest of the original pattern matching code...
+        const rotations = [
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: Math.PI / 2 },
+            { x: 0, y: 0, z: Math.PI },
+            { x: 0, y: 0, z: -Math.PI / 2 }
+        ];
+
+        for (const rotation of rotations) {
+            const tempQuat = new THREE.Quaternion();
+            tempQuat.setFromEuler(new THREE.Euler(rotation.x, rotation.y, rotation.z));
+
+            const rotatedHoles = attachFace.holes.map(hole => {
+                const pos = new THREE.Vector3(hole.position.x, hole.position.y, hole.position.z);
+                pos.applyQuaternion(tempQuat);
+                return {
+                    ...hole,
+                    position: {
+                        x: pos.x,
+                        y: pos.y,
+                        z: pos.z
+                    }
+                };
+            });
+
+            const rotatedFace = {
+                ...attachFace,
+                holes: rotatedHoles
+            };
+
+            const score = compareHolePatterns(baseFace, rotatedFace, isRiser);
+            if (score > maxScore) {
+                maxScore = score;
+                bestMatch = attachFace;
+                bestTransform = {
+                    rotation: tempQuat,
+                    score: score
+                };
+            }
+        }
+    }
+
+    if (bestMatch && bestTransform && maxScore > 0.6) {
+        bestMatch.bestTransform = bestTransform;
+        bestMatch.patternMapping = {
+            baseFaceId: baseFace.faceId,
+            attachmentFaceId: bestMatch.faceId,
+            baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath || 'heromedir/base/UniversalBase.stl',
+            attachmentModelPath: window.currentAttachmentPath
+        };
+
+        markPatternAsUsed(bestMatch.patternMapping.baseModelPath, { faceId: bestMatch.patternMapping.baseFaceId });
+        markPatternAsUsed(bestMatch.patternMapping.attachmentModelPath, { faceId: bestMatch.patternMapping.attachmentFaceId });
+
+        return bestMatch;
     }
 
     return null;
@@ -2612,6 +2603,7 @@ function isHolePatternUsed(modelPath, face) {
 async function createSecondaryAttachmentPoints(model) {
     const geometryData = await loadGeometryData(model.userData.modelPath);
     if (!geometryData?.faces) return;
+
     const sphereGeometry = new THREE.SphereGeometry(3.0, 32, 32);
     const sphereMaterial = new THREE.MeshPhongMaterial({
         color: 0x800080,
@@ -2624,9 +2616,25 @@ async function createSecondaryAttachmentPoints(model) {
 
     // Find compatible secondary attachment types based on parent type
     const parentType = model.userData.attachmentType;
-    const compatibleTypes = Object.entries(categoryMenus)
-        .filter(([_, menu]) => menu.parentType === parentType)
-        .map(([type, _]) => type);
+    const modelPath = model.userData.modelPath.toLowerCase();
+    const isRiser = modelPath.includes('riser');
+
+    // Determine compatible types
+    let compatibleTypes = [];
+    if (isRiser) {
+        // If it's a riser, it can always accept direct drive mounts
+        compatibleTypes = ['directdrive'];
+    } else {
+        // Otherwise use normal compatibility logic
+        compatibleTypes = Object.entries(categoryMenus)
+            .filter(([type, menu]) => {
+                if (Array.isArray(menu.parentType)) {
+                    return menu.parentType.includes(parentType);
+                }
+                return menu.parentType === parentType;
+            })
+            .map(([type, _]) => type);
+    }
 
     if (compatibleTypes.length === 0) return;
 
@@ -2654,11 +2662,7 @@ async function createSecondaryAttachmentPoints(model) {
             parentModel: model,
             faceId: face.faceId
         };
-        console.log("Creating secondary points for:", {
-            modelPath: model.userData.modelPath,
-            type: model.userData.attachmentType,
-            availableFaces: availableFaces.length
-        });
+
         model.add(point);
         attachmentPoints.push(point);
     });
