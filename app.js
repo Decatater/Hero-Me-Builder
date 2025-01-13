@@ -146,34 +146,34 @@ const categoryMenus = {
         parentType: 'gantry' // Only attach to gantry adapters
     },
     directdrive: {
-        title: "Direct Drive Options",
-        isCustomMenu: true,
-        createCustomMenu: (userData) => {
-            return {
-                type: 'category',
-                items: [
-                    {
-                        title: "Direct Drive Mounts",
-                        path: "heromedir/directdrivemounts",
-                        attachmentType: "directdrive",
-                        filter: (item) => {
-                            const name = item.name.toLowerCase();
-                            return item.type === 'directory' || (name.endsWith('.stl') && !name.includes('riser'));
-                        }
-                    },
-                    {
-                        title: "Riser/Spacer",
-                        path: "heromedir/directdrivemounts",
-                        attachmentType: "spacer",
-                        filter: (item) => {
-                            const name = item.name.toLowerCase();
-                            return item.type === 'directory' || (name.endsWith('.stl') && name.includes('riser'));
-                        }
-                    }
-                ]
-            };
+        title: "Direct Drive & Spacer Options",
+        paths: ["heromedir/directdrivemounts"],
+        filter: (item, userData) => {
+            // Store the original type to ensure menu consistency
+            if (selectedPoint && !selectedPoint.userData.originalType) {
+                selectedPoint.userData.originalType = 'directdrive';
+            }
+            
+            const name = item.name.toLowerCase();
+            
+            // Always show directories
+            if (item.type === 'directory') return true;
+            
+            // Only process STL files
+            if (!name.endsWith('.stl')) return false;
+            
+            // Set type based on whether it's a riser
+            if (selectedPoint) {
+                if (name.includes('riser')) {
+                    selectedPoint.userData.attachmentType = 'spacer';
+                } else {
+                    selectedPoint.userData.attachmentType = 'directdrive';
+                }
+            }
+            
+            return true;
         },
-        parentType: ['hotend', 'spacer']
+        parentType: ['hotend', 'spacer']  // Spacers need to support direct drive mounts
     }
 };
 const partColors = {
@@ -1314,10 +1314,12 @@ function getFilesFromCache(targetFolder) {
     return results;
 }
 async function createDropdownForType(type) {
-    console.log('Creating menu for type:', type);
+    // Use the original type if it exists, otherwise use the current type
+    const menuType = selectedPoint?.userData?.originalType || type;
+    console.log('Creating menu for type:', menuType);
 
     menuState.clear();
-    const menu = categoryMenus[type];
+    const menu = categoryMenus[menuType];
     if (!menu) return '';
 
     if (menu.isCustomMenu) {
@@ -1460,11 +1462,16 @@ async function onMouseClick(event) {
         return;
     }
 
-    // Rest of click handler remains unchanged...
     const intersects = raycaster.intersectObjects(attachmentPoints, true);
 
     if (intersects.length > 0) {
         selectedPoint = intersects[0].object;
+        // If this point was previously a directdrive menu point, preserve that
+        if (!selectedPoint.userData.originalType && 
+            (selectedPoint.userData.attachmentType === 'directdrive' || 
+             selectedPoint.userData.attachmentType === 'spacer')) {
+            selectedPoint.userData.originalType = 'directdrive';
+        }
         menuElement.innerHTML = await createDropdownForType(selectedPoint.userData.attachmentType);
         menuElement.style.display = 'block';
 
@@ -1538,8 +1545,17 @@ async function attachModelAtPoint(modelPath) {
 
         const loader = new THREE.STLLoader();
         loader.load(modelPath, function (geometry) {
+            
+            // Get the original type or current type
+            const originalType = selectedPoint.userData.originalType || selectedPoint.userData.attachmentType;
+            // Determine if this is a riser/spacer FIRST
+            const isRiser = modelPath.toLowerCase().includes('riser');
+            
+            // Set the actual type based on whether it's a riser
+            const actualType = isRiser ? 'spacer' : originalType;
+            
             const material = new THREE.MeshPhongMaterial({
-                color: partColors[selectedPoint.userData.attachmentType] || 0xff0000,
+                color: partColors[actualType] || 0xff0000,
                 flatShading: false,
                 transparent: true,
                 opacity: 1
@@ -1547,7 +1563,8 @@ async function attachModelAtPoint(modelPath) {
 
             const mesh = new THREE.Mesh(geometry, material);
             mesh.userData.modelPath = modelPath;
-            mesh.userData.attachmentType = selectedPoint.userData.attachmentType;
+            mesh.userData.attachmentType = actualType;
+            mesh.userData.originalType = originalType;  // Store the original type
             mesh.userData.usedPatterns = {
                 holes: new Set([...getUsedPatterns(baseModelPath)]),
                 slides: new Set([...(usedPatterns.get(baseModelPath)?.slides || [])])
@@ -1859,30 +1876,28 @@ async function attachModelAtPoint(modelPath) {
 
                     // Handle specific attachment type alignments
                     if (selectedPoint.userData.attachmentType === 'hotend' ||
-                        selectedPoint.userData.attachmentType === 'directdrive') {
-                            console.log('🚨🚨🚨 USING BACKUP ALIGMNMENT');
+                        selectedPoint.userData.attachmentType === 'directdrive' ||
+                        selectedPoint.userData.attachmentType === 'spacer') {
+                        
+                        console.log('🚨🚨🚨 USING HOTEND/DIRECTDRIVE ALIGNMENT');
+                        
                         // First align normals
                         const normalQuat = new THREE.Quaternion();
                         normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
                         mesh.quaternion.copy(normalQuat);
                         
-                        // Determine if this is a spacer/riser by checking either the type or filename
-                        const isRiser = selectedPoint.userData.attachmentType === 'spacer' || 
-                                      modelPath.toLowerCase().includes('riser');
-                        
-                        if (selectedPoint.userData.attachmentType === 'directdrive' || isRiser) {
-                            // Apply 180° rotation for both directdrive and spacers/risers
-                            const rotateQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                            mesh.quaternion.premultiply(rotateQuat);
-                        }
                         
                         // Check and correct orientation if needed
                         const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
                         if (rotatedOrientation.y < 0) {
                             const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
+                            // Apply flip around pattern center
+                            const flipPoint = baseCenter.clone();
+                            mesh.position.sub(flipPoint);
+                            mesh.position.applyQuaternion(flipQuat);
+                            mesh.position.add(flipPoint);
                             mesh.quaternion.premultiply(flipQuat);
                         }
-                        
                     } else if (selectedPoint.userData.attachmentType === 'fanguard') {
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
@@ -2019,16 +2034,12 @@ async function attachModelAtPoint(modelPath) {
 
             // Create secondary attachment points if applicable
             const menuConfig = categoryMenus[selectedPoint.userData.attachmentType];
-            const isRiser = mesh.userData.modelPath.toLowerCase().includes('riser');
-
+            
             // Create points if this isn't a secondary attachment OR if it's a riser
+            // When creating secondary attachment points, pass the original type
             if (!menuConfig?.parentType || isRiser) {
-                createSecondaryAttachmentPoints(mesh).then(() => {
-                    // Reset UI after points are created
-                    const dropdown = document.querySelector('.dropdown');
-                    if (dropdown) dropdown.value = '';
-                    document.getElementById('modelSelect').style.display = 'none';
-                    selectedPoint = null;
+                createSecondaryAttachmentPoints(mesh, originalType).then(() => {
+                    resetUIState();
                     renderer.render(scene, camera);
                 });
             } else {
@@ -2189,10 +2200,13 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     console.log('Current model path:', window.currentAttachmentPath);
     console.log('Attachment type:', attachmentType);
 
-    // Special case for spacers
-    if (attachmentType === 'spacer') {
+    // Get the original type if it exists
+    const originalType = selectedPoint?.userData?.originalType || attachmentType;
+    
+    // Handle spacers while preserving original type
+    if (window.currentAttachmentPath.toLowerCase().includes('riser')) {
         console.log('🚨🚨🚨 SPACER IN FINDMATCHINGFACES');
-        // Just find first available face with right number of holes
+        // Find first available face with right number of holes
         const attachFace = attachmentFaces.find(face => 
             face.holes?.length === baseFace.holes.length &&
             !isHolePatternUsed(window.currentAttachmentPath, face));
@@ -2207,7 +2221,8 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
             baseFaceId: baseFace.faceId,
             attachmentFaceId: attachFace.faceId,
             baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath,
-            attachmentModelPath: window.currentAttachmentPath
+            attachmentModelPath: window.currentAttachmentPath,
+            originalType: originalType  // Preserve the original type
         };
 
         // Mark the patterns as used
@@ -2235,7 +2250,6 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     const isRiser = window.currentAttachmentPath.toLowerCase().includes('riser');
 
     for (const attachFace of availableFaces) {
-        // Rest of the original pattern matching code...
         const rotations = [
             { x: 0, y: 0, z: 0 },
             { x: 0, y: 0, z: Math.PI / 2 },
@@ -2283,7 +2297,8 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
             baseFaceId: baseFace.faceId,
             attachmentFaceId: bestMatch.faceId,
             baseModelPath: selectedPoint?.userData?.parentModel?.userData?.modelPath || 'heromedir/base/UniversalBase.stl',
-            attachmentModelPath: window.currentAttachmentPath
+            attachmentModelPath: window.currentAttachmentPath,
+            originalType: originalType  // Preserve the original type
         };
 
         markPatternAsUsed(bestMatch.patternMapping.baseModelPath, { faceId: bestMatch.patternMapping.baseFaceId });
