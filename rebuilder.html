@@ -5,25 +5,109 @@
     <style>
         body {
             margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
         }
 
         canvas {
             display: block;
         }
 
-        #modelSelect {
-            position: absolute;
-            display: none;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            z-index: 1000;
+        #mainMenu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #2c3e50;
+            z-index: 2000;
         }
 
-        .dropdown {
-            padding: 5px;
+        .main-menu-header {
+            margin-bottom: 2rem;
+            max-width: 400px;
+            width: 80%;
+        }
+
+        .main-menu-header img {
+            width: 100%;
+            height: auto;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .menu-button {
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
             min-width: 200px;
+        }
+
+        .menu-button:hover {
+            background-color: #2980b9;
+        }
+
+        #aboutSection {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 600px;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 2001;
+        }
+
+        .about-content {
+            margin-bottom: 1.5rem;
+        }
+
+        .close-button {
+            padding: 0.5rem 1rem;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .close-button:hover {
+            background-color: #c0392b;
+        }
+
+        /* Modifications to the model select menu */
+        #modelSelect {
+            width: 380px !important;
+            max-height: 400px !important;
+        }
+
+        #modelSelect .menu-content {
+            max-height: 300px !important;
+            padding: 4px !important;
+        }
+
+        #modelSelect .menu-item {
+            padding: 6px 8px !important;
+            margin: 2px 0 !important;
         }
 
         #loadingScreen {
@@ -33,7 +117,7 @@
             width: 100%;
             height: 100%;
             background-color: #2c3e50;
-            display: flex;
+            display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -65,23 +149,78 @@
         
         .fade-out {
             opacity: 0;
-            visibility: hidden;  /* This ensures the div won't block interactions */
+            visibility: hidden;
         }
     </style>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <div id="mainMenu">
+        <div class="main-menu-header">
+            <img src="builder.png" alt="Hero Me Builder Header">
+        </div>
+        <div class="menu-buttons">
+            <button class="menu-button" onclick="startBuilder()">Start Builder</button>
+            <button class="menu-button" onclick="showAbout()">About</button>
+        </div>
+    </div>
+
+    <div id="aboutSection">
+        <div class="about-content">
+            <h2>How to Use the Hero Me Builder</h2>
+            <p>Welcome to the Hero Me Gen 7 Builder! Here's how to use it:</p>
+            <ul>
+                <li>Click and drag to rotate the view</li>
+                <li>Scroll to zoom in/out</li>
+                <li>Click on the purple attachment points to add parts</li>
+                <li>Double-click on parts to remove them</li>
+                <li>Use the up/down arrows to adjust part positions when available</li>
+                <li>Click the "Download Assembly" button to save your work</li>
+            </ul>
+        </div>
+        <button class="close-button" onclick="hideAbout()">Close</button>
+    </div>
+
     <div id="loadingScreen">
         <div class="loader"></div>
         <div class="loading-text">Loading Hero Me Gen 7 Builder...</div>
     </div>
+    
     <div id="modelSelect"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three/examples/js/exporters/STLExporter.js"></script>
-    <script src="app.js"></script>
+
+    <script>
+        let appScriptLoaded = false;
+
+        function startBuilder() {
+            document.getElementById('mainMenu').style.display = 'none';
+            document.getElementById('loadingScreen').style.display = 'flex';
+            
+            if (!appScriptLoaded) {
+                const script = document.createElement('script');
+                script.src = 'app.js';
+                script.onload = function() {
+                    appScriptLoaded = true;
+                };
+                document.body.appendChild(script);
+            } else {
+                location.reload();
+            }
+        }
+
+        function showAbout() {
+            document.getElementById('aboutSection').style.display = 'block';
+        }
+
+        function hideAbout() {
+            document.getElementById('aboutSection').style.display = 'none';
+        }
+    </script>
 </body>
 </html>
