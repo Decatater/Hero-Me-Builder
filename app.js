@@ -73,17 +73,14 @@ const categoryMenus = {
                     path: "heromedir/ablmounts",
                     filter: (item) => {
                         const name = item.name.toLowerCase();
-                        const excludedTerms = ['mount', 'mounts', 'spacer'];
-
+                        
                         if (item.type === 'directory') {
-                            return !excludedTerms.some(term => name.includes(term));
+                            // Only exclude specific mount folders
+                            const excludedFolders = ['crtouch mounts', 'bltouch mounts'];
+                            return !excludedFolders.includes(name);
                         }
 
                         if (item.type === 'file' && name.endsWith('.stl')) {
-                            if (excludedTerms.some(term => name.includes(term))) {
-                                return false;
-                            }
-
                             return isRightSide ?
                                 (name.includes('right') || (!name.includes('left') && !name.includes('right'))) :
                                 (name.includes('left') || (!name.includes('left') && !name.includes('right')));
@@ -134,7 +131,7 @@ const categoryMenus = {
     adxl: {
         title: "ADXL345 Mounts",
         paths: ["heromedir/adxl345"],
-        parentType: 'skirt' // Only attach to skirts
+        parentType: ['skirt', 'partcooling'] 
     },
     gantryclip: {
         title: "Gantry Clips",
@@ -1898,6 +1895,24 @@ async function attachModelAtPoint(modelPath) {
                             mesh.position.add(flipPoint);
                             mesh.quaternion.premultiply(flipQuat);
                         }
+                        
+                        // Add 180-degree rotation around Z-axis for direct drive mounts
+                        // Check if this is a direct drive mount by examining the original type and ensuring it's not a riser
+                        const originalType = selectedPoint.userData.originalType || selectedPoint.userData.attachmentType;
+                        const isDirectDrive = originalType === 'directdrive' && !modelPath.toLowerCase().includes('riser');
+                        
+                        if (isDirectDrive) {
+                            console.log('Applying 180-degree rotation for direct drive mount');
+                            const rotationAxis = new THREE.Vector3(0, 0, 1);  // Z-axis
+                            const rotationQuat = new THREE.Quaternion().setFromAxisAngle(rotationAxis, Math.PI);
+                            
+                            // Rotate around the pattern center
+                            const rotationPoint = baseCenter.clone();
+                            mesh.position.sub(rotationPoint);
+                            mesh.position.applyQuaternion(rotationQuat);
+                            mesh.position.add(rotationPoint);
+                            mesh.quaternion.premultiply(rotationQuat);
+                        }
                     } else if (selectedPoint.userData.attachmentType === 'fanguard') {
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
@@ -2633,12 +2648,16 @@ async function createSecondaryAttachmentPoints(model) {
     const parentType = model.userData.attachmentType;
     const modelPath = model.userData.modelPath.toLowerCase();
     const isRiser = modelPath.includes('riser');
+    const isPartCooling = parentType === 'partcooling';
 
     // Determine compatible types
     let compatibleTypes = [];
     if (isRiser) {
         // If it's a riser, it can always accept direct drive mounts
         compatibleTypes = ['directdrive'];
+    } else if (isPartCooling && geometryData.circleGroups?.length > 0) {
+        // For part cooling with circle groups, allow ADXL mounts
+        compatibleTypes = ['adxl'];
     } else {
         // Otherwise use normal compatibility logic
         compatibleTypes = Object.entries(categoryMenus)
@@ -2653,34 +2672,61 @@ async function createSecondaryAttachmentPoints(model) {
 
     if (compatibleTypes.length === 0) return;
 
-    // Filter out faces that are already in use
-    const availableFaces = geometryData.faces.filter(face =>
-        !isHolePatternUsed(model.userData.modelPath, face) &&
-        face.holes?.length > 0
-    );
+    if (isPartCooling && geometryData.circleGroups) {
+        // Create attachment points for each circle group
+        geometryData.circleGroups.forEach(group => {
+            if (isHolePatternUsed(model.userData.modelPath, { faceId: group.id })) return;
 
-    availableFaces.forEach(face => {
-        const center = calculateHolePatternCenter(face.holes);
-        const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+            const center = new THREE.Vector3(group.center.x, group.center.y, group.center.z);
+            const normal = new THREE.Vector3(group.normal.x, group.normal.y, group.normal.z);
 
-        // Create attachment point
-        const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
-        center.add(normal.clone().multiplyScalar(5)); // 5mm offset
-        point.position.copy(center);
+            // Create attachment point
+            const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+            center.add(normal.clone().multiplyScalar(5)); // 5mm offset
+            point.position.copy(center);
 
-        // Assign properties for the first compatible type
-        const attachmentType = compatibleTypes[0];
-        point.userData = {
-            attachmentType,
-            attachmentName: attachmentType,
-            normal,
-            parentModel: model,
-            faceId: face.faceId
-        };
+            // Assign properties
+            point.userData = {
+                attachmentType: 'adxl',
+                attachmentName: 'adxl',
+                normal,
+                parentModel: model,
+                faceId: group.id
+            };
 
-        model.add(point);
-        attachmentPoints.push(point);
-    });
+            model.add(point);
+            attachmentPoints.push(point);
+        });
+    } else {
+        // Standard attachment point creation for non-part cooling or parts without circle groups
+        const availableFaces = geometryData.faces.filter(face =>
+            !isHolePatternUsed(model.userData.modelPath, face) &&
+            face.holes?.length > 0
+        );
+
+        availableFaces.forEach(face => {
+            const center = calculateHolePatternCenter(face.holes);
+            const normal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+
+            // Create attachment point
+            const point = new THREE.Mesh(sphereGeometry, sphereMaterial.clone());
+            center.add(normal.clone().multiplyScalar(5)); // 5mm offset
+            point.position.copy(center);
+
+            // Assign properties for the first compatible type
+            const attachmentType = compatibleTypes[0];
+            point.userData = {
+                attachmentType,
+                attachmentName: attachmentType,
+                normal,
+                parentModel: model,
+                faceId: face.faceId
+            };
+
+            model.add(point);
+            attachmentPoints.push(point);
+        });
+    }
 }
 function alignSecondaryModel(mesh, attachPoint, baseGeometryData, attachGeometryData) {
     const parentModel = attachPoint.userData.parentModel;
