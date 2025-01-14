@@ -472,7 +472,7 @@ function init() {
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
     camera.position.set(0, 0, 10);
 
-    // Create renderer with proper parameters
+    // Create renderer
     renderer = new THREE.WebGLRenderer({
         antialias: true,
         preserveDrawingBuffer: true
@@ -480,17 +480,44 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     document.body.appendChild(renderer.domElement);
-    // Add event listeners
-    window.addEventListener('mousedown', (e) => {
-        console.log("Raw mousedown event fired");
-        console.log("Target:", e.target);
-    }, true);
-    window.addEventListener('resize', onWindowResize, false);
-    window.addEventListener('mousedown', onMouseDown, true); // Use capture phase
-    window.addEventListener('mouseup', onMouseUp, true);    // Use capture phase
+
+    // Create and style download button
+    const downloadButton = document.createElement('button');
+    downloadButton.textContent = 'Download Assembly';
+    downloadButton.style.position = 'fixed';
+    downloadButton.style.bottom = '20px';
+    downloadButton.style.right = '20px';
+    downloadButton.style.padding = '10px 20px';
+    downloadButton.style.backgroundColor = '#4CAF50';
+    downloadButton.style.color = 'white';
+    downloadButton.style.border = 'none';
+    downloadButton.style.borderRadius = '5px';
+    downloadButton.style.cursor = 'pointer';
+    downloadButton.style.zIndex = '1000';
+    downloadButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    downloadButton.style.transition = 'background-color 0.3s';
+    downloadButton.style.fontFamily = 'Arial, sans-serif';
+    downloadButton.style.fontSize = '14px';
+
+    downloadButton.onmouseover = function() {
+        this.style.backgroundColor = '#45a049';
+    };
+
+    downloadButton.onmouseout = function() {
+        this.style.backgroundColor = '#4CAF50';
+    };
+
+    downloadButton.onclick = downloadSceneAsZip;
+    document.body.appendChild(downloadButton);
+
+    // Add event listeners - MUST BE BEFORE OrbitControls
+    window.addEventListener('mousedown', onMouseDown, true);
+    window.addEventListener('mouseup', onMouseUp, true);
     window.addEventListener('mousemove', onMouseMove, false);
     window.addEventListener('click', onMouseClick, false);
     window.addEventListener('dblclick', onDoubleClick, false);
+    window.addEventListener('resize', onWindowResize, false);
+
     // Setup controls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -513,11 +540,11 @@ function init() {
         loadModel();
     });
 
-
-
     // Start animation loop
     animate();
 }
+
+
 function visualizeGeometryFeatures(geometryData, parentMesh) {
     // Clean up any existing visualizations
     parentMesh.children = parentMesh.children.filter(child =>
@@ -774,20 +801,11 @@ function loadModel() {
                 opacity: 1
             });
 
-            // Create the mesh
             mainModel = new THREE.Mesh(geometry, material);
-
-            // Compute bounding box and center
             geometry.computeBoundingBox();
             const center = geometry.boundingBox.getCenter(new THREE.Vector3());
-
-            // Center the geometry
             geometry.translate(-center.x, -center.y, -center.z);
-
-            // Add to scene before any transformations
             scene.add(mainModel);
-
-            // Apply rotation after adding to scene
             mainModel.rotation.x = -Math.PI / 2;
 
             // Create attachment points
@@ -796,27 +814,38 @@ function loadModel() {
             // Load and visualize holes
             const geometryData = await loadGeometryData('heromedir/base/UniversalBase.stl');
             if (geometryData) {
-                visualizeHoles(geometryData, mainModel);
-                visualizeSlideFaces(geometryData, mainModel);
+                visualizeGeometryFeatures(geometryData, mainModel);
             }
 
-            // Adjust camera based on actual model size
+            // Adjust camera
             const box = new THREE.Box3().setFromObject(mainModel);
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
-
-            // Set camera position to a good viewing distance
             camera.position.z = maxDim * 3;
-
-            // Update controls
             controls.minDistance = maxDim * 0.5;
             controls.maxDistance = maxDim * 5;
 
-            // Force a render
             renderer.render(scene, camera);
+
+            // Hide loading screen with fade effect
+            const loadingScreen = document.getElementById('loadingScreen');
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
         },
-        xhr => console.log((xhr.loaded / xhr.total * 100) + '% loaded'),
-        error => console.error('Error loading model:', error)
+        xhr => {
+            // Update loading progress
+            const percent = Math.round((xhr.loaded / xhr.total) * 100);
+            const loadingText = document.querySelector('.loading-text');
+            loadingText.textContent = `Loading Hero Me Gen 7 Builder... ${percent}%`;
+        },
+        error => {
+            console.error('Error loading model:', error);
+            const loadingText = document.querySelector('.loading-text');
+            loadingText.textContent = 'Error loading model. Please refresh the page.';
+            loadingText.style.color = '#e74c3c';
+        }
     );
 }
 function findClosestFace(faces, point) {
@@ -2852,5 +2881,48 @@ function filterContents(contents, userData) {
         });
         return filterResult;
     });
+}
+async function downloadSceneAsZip() {
+    const zip = new JSZip();
+    
+    // Function to get model name from path
+    const getModelName = (path) => {
+        const parts = path.split('/');
+        return parts[parts.length - 1];
+    };
+
+    // Add base model
+    if (mainModel) {
+        const baseSTL = await exportModelToSTL(mainModel);
+        zip.file("UniversalBase.stl", baseSTL);
+    }
+
+    // Add all attached models
+    attachedModels.forEach((model, point) => {
+        if (model.userData.modelPath) {
+            const modelName = getModelName(model.userData.modelPath);
+            const modelSTL = exportModelToSTL(model);
+            zip.file(modelName, modelSTL);
+        }
+    });
+
+    // Generate and download the zip file
+    zip.generateAsync({ type: "blob" }).then(function(content) {
+        const url = window.URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "hero_me_assembly.zip";
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    });
+}
+
+function exportModelToSTL(model) {
+    const exporter = new THREE.STLExporter();
+    const str = exporter.parse(model);
+    const bytes = new TextEncoder().encode(str);
+    return bytes;
 }
 init();
