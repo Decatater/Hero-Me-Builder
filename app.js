@@ -331,6 +331,7 @@ function compareHolePatterns(face1, face2, isRiser = false) {
 }
 // Function to normalize paths for comparison
 function normalizePath(path) {
+    if (!path) return '';
     return path.toLowerCase().replace(/[\\\/]+/g, '/').trim();
 }
 function calculateInterHoleDistances(holes) {
@@ -872,33 +873,47 @@ function findDirectoryByPath(paths, structure) {
         paths = [paths];
     }
 
-    const normalizedSearchPaths = paths.map(path => normalizePath(path));
+    console.log('Finding directories for paths:', paths);
+    
+    // Unwrap the outer array - this is the key fix
+    const actualStructure = Array.isArray(structure) && structure.length === 1 ? structure[0] : structure;
+    console.log('Searching in structure:', actualStructure);
+
+    // Filter out any undefined paths
+    const validPaths = paths.filter(path => path);
+    if (validPaths.length === 0) {
+        console.error('No valid paths provided to findDirectoryByPath');
+        return null;
+    }
+
+    const normalizedSearchPaths = validPaths.map(path => normalizePath(path));
+    console.log('Normalized search paths:', normalizedSearchPaths);
+    
     let allContents = [];
 
     function search(items, searchPath) {
-        if (!items) return null;
+        if (!items || !searchPath) return null;
 
         let contents = [];
 
         for (const item of items) {
+            if (!item.path) {
+                console.log('Item missing path:', item);
+                continue;
+            }
+            
             const normalizedItemPath = normalizePath(item.path);
+            console.log('Comparing paths:', {
+                searchPath,
+                itemPath: normalizedItemPath,
+                match: normalizedItemPath === searchPath
+            });
 
             if (item.type === 'directory') {
                 if (normalizedItemPath === searchPath) {
-                    // Found the target directory, collect all contents recursively
-                    function collectContents(dirItems) {
-                        let results = [];
-                        if (!dirItems) return results;
-
-                        dirItems.forEach(dirItem => {
-                            results.push(dirItem);
-                            if (dirItem.type === 'directory' && dirItem.children) {
-                                results = results.concat(collectContents(dirItem.children));
-                            }
-                        });
-                        return results;
-                    }
-                    return collectContents(item.children);
+                    console.log('Found matching directory:', item);
+                    // Found the target directory, return its children
+                    return item.children || [];
                 }
 
                 // Continue searching in subdirectories
@@ -911,9 +926,12 @@ function findDirectoryByPath(paths, structure) {
 
     // Search for each path and combine results
     normalizedSearchPaths.forEach(searchPath => {
-        const contents = search(structure, searchPath);
+        const contents = search(actualStructure, searchPath);
         if (contents) {
+            console.log('Found contents for path', searchPath, ':', contents);
             allContents = [...allContents, ...contents];
+        } else {
+            console.log('No contents found for path:', searchPath);
         }
     });
 
@@ -1294,12 +1312,24 @@ async function createAttachmentPoints(object) {
 // Load directory structure at startup
 async function loadDirectoryStructure() {
     try {
-        const response = await fetch('/list-files');
-        if (!response.ok) throw new Error('Network response was not ok');
-        directoryStructure = await response.json();
-        console.log('Directory structure loaded:', directoryStructure);
+        console.log('Starting directory structure load...');
+        const response = await fetch('list-files.php');
+        console.log('Fetch response:', response);
+        
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Raw directory data:', data);
+        
+        directoryStructure = data;
+        console.log('Processed directory structure:', directoryStructure);
+        return directoryStructure;
     } catch (error) {
         console.error('Error loading directory structure:', error);
+        directoryStructure = [];
+        return directoryStructure;
     }
 }
 // Global directory structure cache
@@ -1346,9 +1376,15 @@ async function createDropdownForType(type) {
 
     menuState.clear();
     const menu = categoryMenus[menuType];
-    if (!menu) return '';
+    if (!menu) {
+        console.error('No menu configuration found for type:', menuType);
+        return '';
+    }
+
+    console.log('Found menu config:', menu);
 
     if (menu.isCustomMenu) {
+        console.log('Creating custom menu');
         const customMenu = menu.createCustomMenu(selectedPoint?.userData);
         if (customMenu.type === 'category') {
             currentMenuPath = [{
@@ -1364,12 +1400,22 @@ async function createDropdownForType(type) {
         }
     } else {
         // Original directory-based menu code
+        console.log('Creating directory-based menu with path:', menu.paths[0]);
+        console.log('Current directory structure:', directoryStructure);
+        
         const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
-        if (!directory) return '';
+        console.log('Directory search result:', directory);
+
+        if (!directory) {
+            console.error('No directory found for path:', menu.paths[0]);
+            return '';
+        }
 
         const filteredContents = menu.filter ?
             filterContents(directory, selectedPoint?.userData) :
             directory;
+            
+        console.log('Filtered contents:', filteredContents);
 
         currentMenuPath = [{
             folder: filteredContents,
@@ -1377,6 +1423,8 @@ async function createDropdownForType(type) {
             title: menu.title
         }];
     }
+
+    console.log('Current menu path:', currentMenuPath);
 
     const menuElement = document.createElement('div');
     updateMenuContent(menuElement);
@@ -1905,43 +1953,127 @@ async function attachModelAtPoint(modelPath) {
                         selectedPoint.userData.attachmentType === 'directdrive' ||
                         selectedPoint.userData.attachmentType === 'spacer') {
                         
-                        console.log('🚨🚨🚨 USING HOTEND/DIRECTDRIVE ALIGNMENT');
-                        
-                        // First align normals
-                        const normalQuat = new THREE.Quaternion();
-                        normalQuat.setFromUnitVectors(attachNormal, baseNormal.clone().negate());
-                        mesh.quaternion.copy(normalQuat);
-                        
-                        
-                        // Check and correct orientation if needed
-                        const rotatedOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
-                        if (rotatedOrientation.y < 0) {
-                            const flipQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, Math.PI);
-                            // Apply flip around pattern center
-                            const flipPoint = baseCenter.clone();
-                            mesh.position.sub(flipPoint);
-                            mesh.position.applyQuaternion(flipQuat);
-                            mesh.position.add(flipPoint);
-                            mesh.quaternion.premultiply(flipQuat);
-                        }
-                        
-                        // Add 180-degree rotation around Z-axis for direct drive mounts
-                        // Check if this is a direct drive mount by examining the original type and ensuring it's not a riser
-                        const originalType = selectedPoint.userData.originalType || selectedPoint.userData.attachmentType;
-                        const isDirectDrive = originalType === 'directdrive' && !modelPath.toLowerCase().includes('riser');
-                        
-                        if (isDirectDrive) {
-                            console.log('Applying 180-degree rotation for direct drive mount');
-                            const rotationAxis = new THREE.Vector3(0, 0, 1);  // Z-axis
-                            const rotationQuat = new THREE.Quaternion().setFromAxisAngle(rotationAxis, Math.PI);
+                        console.log('🚨🚨🚨 USING UNIFIED MOUNT ALIGNMENT');
+                    
+                        if (attachGeometryData.frontFace && attachGeometryData.orientationFace) {
+                            console.log('Using explicit front and orientation faces for alignment');
+                    
+                            // Get the front normal vector and normalize it
+                            const frontNormal = new THREE.Vector3(
+                                attachGeometryData.frontFace.normal.x,
+                                attachGeometryData.frontFace.normal.y,
+                                attachGeometryData.frontFace.normal.z
+                            ).normalize();
+                    
+                            console.log('Using explicit front and orientation faces for alignment');
                             
-                            // Rotate around the pattern center
-                            const rotationPoint = baseCenter.clone();
-                            mesh.position.sub(rotationPoint);
-                            mesh.position.applyQuaternion(rotationQuat);
-                            mesh.position.add(rotationPoint);
-                            mesh.quaternion.premultiply(rotationQuat);
+                            // Extract orientation normal and rotation
+                            const orientNormal = new THREE.Vector3(
+                                attachGeometryData.orientationFace.normal.x,
+                                attachGeometryData.orientationFace.normal.y,
+                                attachGeometryData.orientationFace.normal.z
+                            ).normalize();
+
+                            const orientRotation = attachGeometryData.orientationFace.rotation;
+                            
+                            // Define target vectors
+                            const targetUp = new THREE.Vector3(0, 0, 1);
+                            
+                            console.log('Mount data:', {
+                                orientNormal,
+                                orientRotation,
+                                modelPath: modelPath
+                            });
+                            
+                            // Create initial rotation based on orientation face rotation
+                            const initialRotation = new THREE.Euler(
+                                orientRotation.x * Math.PI / 180,
+                                orientRotation.y * Math.PI / 180,
+                                orientRotation.z * Math.PI / 180
+                            );
+                            const initialQuat = new THREE.Quaternion().setFromEuler(initialRotation);
+                            mesh.quaternion.copy(initialQuat);
+                            
+                            // Then align normal
+                            const baseQuat = new THREE.Quaternion();
+                            if (selectedPoint.userData.attachmentType === 'spacer') {
+                                // For spacers: flip the logic from hotends
+                                baseQuat.setFromUnitVectors(orientNormal, orientRotation.x === 0 ? targetUp.clone().negate() : targetUp);
+                            } else {
+                                // Original logic for hotends and other types
+                                baseQuat.setFromUnitVectors(orientNormal, orientRotation.x === 0 ? targetUp : targetUp.clone().negate());
+                            }
+                            mesh.quaternion.premultiply(baseQuat);
+                    
+                            // Align front
+                            let rotatedFrontVec = frontNormal.clone().applyQuaternion(mesh.quaternion);
+                            let frontAlignAngle = Math.atan2(rotatedFrontVec.x, -rotatedFrontVec.y);
+                            let frontAlignQuat = new THREE.Quaternion().setFromAxisAngle(targetUp, frontAlignAngle);
+                            mesh.quaternion.premultiply(frontAlignQuat);
+                            
+                            // Now rotate the front face to align with -Y (forward)
+                            const rotatedFront = frontNormal.clone().applyQuaternion(mesh.quaternion);
+                            const frontAngle = Math.atan2(rotatedFront.x, -rotatedFront.y);
+                            const alignQuat = new THREE.Quaternion().setFromAxisAngle(targetUp, frontAngle);
+                            mesh.quaternion.premultiply(alignQuat);
+                            
+                            // Position using holes center
+                            const mountCenter = calculateHolePatternCenter(isRiser ? attachHoles : matchingFace.holes);
+                            const transformedMountCenter = mountCenter.clone().applyQuaternion(mesh.quaternion);
+                            const offset = baseCenter.clone().sub(transformedMountCenter);
+                            mesh.position.copy(offset);
+                    
+                        } else {
+                            console.log('Falling back to improved legacy alignment');
+                            let mountFace = null;
+                            let maxHoleCount = 0;
+                            let maxHoleDiameter = 0;
+                    
+                            attachGeometryData.faces.forEach(face => {
+                                if (face.holes.length > maxHoleCount) {
+                                    maxHoleCount = face.holes.length;
+                                    mountFace = face;
+                                } else if (face.holes.length === maxHoleCount) {
+                                    // If same number of holes, use the face with larger holes
+                                    const maxDiam = Math.max(...face.holes.map(h => h.diameter));
+                                    if (maxDiam > maxHoleDiameter) {
+                                        maxHoleDiameter = maxDiam;
+                                        mountFace = face;
+                                    }
+                                }
+                            });
+                    
+                            if (!mountFace) {
+                                console.error('Could not find appropriate mounting face');
+                                return;
+                            }
+                    
+                            // Get mount face normal
+                            const mountNormal = new THREE.Vector3(
+                                mountFace.normal.x,
+                                mountFace.normal.y,
+                                mountFace.normal.z
+                            );
+                    
+                            // Align mount face with base
+                            const normalQuat = new THREE.Quaternion();
+                            normalQuat.setFromUnitVectors(mountNormal, baseNormal.clone().negate());
+                            mesh.quaternion.copy(normalQuat);
+                    
+                            // Set orientation to point forward (-Y)
+                            const rotatedAttachOrientation = attachOrientation.clone().applyQuaternion(normalQuat);
+                            const targetFront = new THREE.Vector3(0, -1, 0);
+                            const orientQuat = new THREE.Quaternion();
+                            orientQuat.setFromUnitVectors(rotatedAttachOrientation, targetFront);
+                    
+                            // Apply orientation
+                            const orientPoint = baseCenter.clone();
+                            mesh.position.sub(orientPoint);
+                            mesh.position.applyQuaternion(orientQuat);
+                            mesh.position.add(orientPoint);
+                            mesh.quaternion.premultiply(orientQuat);
                         }
+                    
                     } else if (selectedPoint.userData.attachmentType === 'fanguard') {
                         const orientQuat = new THREE.Quaternion();
                         orientQuat.setFromUnitVectors(attachOrientation, new THREE.Vector3(0, 1, 0));
@@ -2049,7 +2181,7 @@ async function attachModelAtPoint(modelPath) {
                     // Position based on pattern centers
                     const transformedAttachCenter = attachCenter.clone().applyQuaternion(mesh.quaternion);
                     const offset = baseCenter.clone().sub(transformedAttachCenter);
-                    const offsetAmount = (selectedPoint.userData.attachmentType === 'hotend') ? -2 : 0;
+                    const offsetAmount = (selectedPoint.userData.attachmentType === 'hotend') ? 0 : 0;
                     const normalOffset = baseNormal.clone().multiplyScalar(offsetAmount);
                     mesh.position.copy(offset.add(normalOffset));
 
@@ -2273,9 +2405,28 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
         markPatternAsUsed(patternMapping.baseModelPath, { faceId: patternMapping.baseFaceId });
         markPatternAsUsed(patternMapping.attachmentModelPath, { faceId: patternMapping.attachmentFaceId });
 
-        // For spacers, don't bother with complex transforms - just copy parent and flip
+        // For spacers, we need to align with the parent's hole pattern but maintain orientation
+        const baseHoles = baseFace.holes;
+        const attachHoles = attachFace.holes;
+        
+        // Calculate the quaternion that aligns the attachment holes with base holes
+        const baseNormal = new THREE.Vector3(
+            baseFace.normal.x,
+            baseFace.normal.y,
+            baseFace.normal.z
+        );
+        const attachNormal = new THREE.Vector3(
+            attachFace.normal.x,
+            attachFace.normal.y,
+            attachFace.normal.z
+        );
+
+        // Create quaternion to align normals
+        const normalQuat = new THREE.Quaternion();
+        normalQuat.setFromUnitVectors(attachNormal, baseNormal);
+
         attachFace.bestTransform = {
-            rotation: new THREE.Quaternion(),  // Will be ignored, parent transform used instead
+            rotation: normalQuat,
             score: 1.0
         };
 

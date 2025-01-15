@@ -10,10 +10,10 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.6,
+          "diameter": 7.61,
           "position": {
-            "x": 13.82,
-            "y": 9.94,
+            "x": 15,
+            "y": 10.61,
             "z": 1.81
           },
           "rotation": {
@@ -26,8 +26,8 @@
           "id": 2,
           "diameter": 7.6,
           "position": {
-            "x": -16.18,
-            "y": 9.94,
+            "x": -15,
+            "y": 10.61,
             "z": 1.81
           },
           "rotation": {
@@ -61,5 +61,5 @@
   },
   "slideFaces": [],
   "totalHoles": 2,
-  "timestamp": "2025-01-14T19:29:25.762Z"
+  "timestamp": "2025-01-14T19:26:25.472Z"
 }
