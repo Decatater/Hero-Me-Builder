@@ -5,6 +5,52 @@
       "normal": {
         "x": 0,
         "y": 0,
+        "z": -1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 6,
+          "position": {
+            "x": -15,
+            "y": -10.36,
+            "z": 4.7
+          },
+          "rotation": {
+            "x": -180,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 6,
+          "position": {
+            "x": 15,
+            "y": -10.36,
+            "z": 4.7
+          },
+          "rotation": {
+            "x": -180,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 30,
+          "axis": "X"
+        }
+      ]
+    },
+    {
+      "faceId": 2,
+      "normal": {
+        "x": 0,
+        "y": 0,
         "z": 1
       },
       "holes": [
@@ -45,55 +91,21 @@
           "axis": "X"
         }
       ]
-    },
-    {
-      "faceId": 2,
-      "normal": {
-        "x": 0,
-        "y": 0,
-        "z": -1
-      },
-      "holes": [
-        {
-          "id": 1,
-          "diameter": 5.29,
-          "position": {
-            "x": -15,
-            "y": -10.36,
-            "z": 2.7
-          },
-          "rotation": {
-            "x": -180,
-            "y": 0,
-            "z": 0
-          }
-        },
-        {
-          "id": 2,
-          "diameter": 5.29,
-          "position": {
-            "x": 15,
-            "y": -10.36,
-            "z": 2.7
-          },
-          "rotation": {
-            "x": -180,
-            "y": 0,
-            "z": 0
-          }
-        }
-      ],
-      "alignedDistances": [
-        {
-          "from": 1,
-          "to": 2,
-          "distance": 30,
-          "axis": "X"
-        }
-      ]
     }
   ],
   "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": -180
+    }
+  },
+  "frontFace": {
     "normal": {
       "x": 0,
       "y": -1,
@@ -107,5 +119,5 @@
   },
   "slideFaces": [],
   "totalHoles": 4,
-  "timestamp": "2025-01-14T21:39:07.932Z"
+  "timestamp": "2025-01-16T00:16:47.792Z"
 }

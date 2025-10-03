@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Circle Detection Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div id="viewer">
+            <div id="hoverGuide"></div>
+            <a href="https://heromebuilder.site" class="home-button">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </div>
+        <div class="sidebar">
+            <div class="controls">
+                <input type="file" id="fileInput" accept=".stl">
+                <input type="file" id="jsonInput" accept=".json" style="display: none;">
+                <button id="resetView" class="button">Reset View</button>
+                <button id="exportData" class="button">Export Data</button>
+                <button id="loadJson" class="button">Load JSON</button>
+                <button id="resetAll" class="button">Reset All</button>
+                <button id="selectFace" class="button">Select Top Face</button>
+                <button id="selectSlideFaces" class="button">Select Slide Faces</button>
+                <button id="selectFrontFace" class="control-button">Select Front Face</button>
+            </div>
+            <div id="status"></div>
+            <div id="detectedCircles"></div>
+            <div id="slideFaces" class="panel">
+                <h3>Slide Face Groups:</h3>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

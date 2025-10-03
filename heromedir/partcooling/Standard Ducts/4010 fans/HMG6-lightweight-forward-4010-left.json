@@ -1,0 +1,104 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": -1,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 90,
+      "y": -90,
+      "z": 0
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -6.71,
+            "y": 5.49,
+            "z": 8.53
+          },
+          "dimensions": {
+            "width": 16.5,
+            "height": 5.5,
+            "center2D": {
+              "x": 4.75,
+              "y": 0.25
+            },
+            "bounds2D": {
+              "min": {
+                "x": -3.5,
+                "y": -2.5
+              },
+              "max": {
+                "x": 13,
+                "y": 3
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -6.7,
+            "y": 26.67,
+            "z": 8.53
+          },
+          "dimensions": {
+            "width": 14,
+            "height": 6.25,
+            "center2D": {
+              "x": 6,
+              "y": -1.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -1,
+                "y": -4.25
+              },
+              "max": {
+                "x": 13,
+                "y": 2
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 15.95
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-21T02:48:56.710Z"
+}

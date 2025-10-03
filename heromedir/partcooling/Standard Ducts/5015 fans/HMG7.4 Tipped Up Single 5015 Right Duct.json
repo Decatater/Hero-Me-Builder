@@ -1,0 +1,103 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": 1,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 90,
+      "y": 90,
+      "z": 0
+    }
+  },
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -4.03,
+            "y": 10.48,
+            "z": 10.68
+          },
+          "dimensions": {
+            "width": 16,
+            "height": 5.25,
+            "center2D": {
+              "x": -5.25,
+              "y": 2.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -13.25,
+                "y": -0.5
+              },
+              "max": {
+                "x": 2.75,
+                "y": 4.75
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -4.15,
+            "y": 29.8,
+            "z": 10.68
+          },
+          "dimensions": {
+            "width": 16,
+            "height": 6.25,
+            "center2D": {
+              "x": -5.25,
+              "y": -0.875
+            },
+            "bounds2D": {
+              "min": {
+                "x": -13.25,
+                "y": -4
+              },
+              "max": {
+                "x": 2.75,
+                "y": 2.25
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 16.58
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-18T19:41:11.611Z"
+}

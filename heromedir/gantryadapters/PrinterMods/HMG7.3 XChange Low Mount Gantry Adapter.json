@@ -1,0 +1,111 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": 1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 3.4,
+          "position": {
+            "x": 19.12,
+            "y": -8.85,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 3.4,
+          "position": {
+            "x": 19.13,
+            "y": -21.25,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 3,
+          "diameter": 3.37,
+          "position": {
+            "x": -12.87,
+            "y": -8.86,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        },
+        {
+          "id": 4,
+          "diameter": 3.4,
+          "position": {
+            "x": -12.88,
+            "y": -21.25,
+            "z": 2.5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 12.4,
+          "axis": "Y"
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "distance": 31.99,
+          "axis": "X"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "distance": 32.01,
+          "axis": "X"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "distance": 12.39,
+          "axis": "Y"
+        }
+      ]
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 1,
+      "z": 0
+    },
+    "rotation": {
+      "x": -90,
+      "y": 0,
+      "z": -180
+    }
+  },
+  "slideFaces": [],
+  "totalHoles": 4,
+  "timestamp": "2025-01-17T21:31:38.727Z"
+}

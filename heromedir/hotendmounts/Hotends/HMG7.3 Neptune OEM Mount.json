@@ -10,11 +10,11 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 5.4,
+          "diameter": 5.97,
           "position": {
-            "x": 14.97,
-            "y": -8.02,
-            "z": -1.15
+            "x": 14.99,
+            "y": -8.08,
+            "z": -3.17
           },
           "rotation": {
             "x": 0,
@@ -24,11 +24,11 @@
         },
         {
           "id": 2,
-          "diameter": 5.27,
+          "diameter": 5.97,
           "position": {
-            "x": -14.99,
-            "y": -8.06,
-            "z": -1.15
+            "x": -14.97,
+            "y": -8.09,
+            "z": -3.17
           },
           "rotation": {
             "x": 0,
@@ -41,7 +41,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 29.95,
+          "distance": 29.96,
           "axis": "X"
         }
       ]
@@ -56,10 +56,10 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.78,
+          "diameter": 7.83,
           "position": {
-            "x": -15.02,
-            "y": -8.01,
+            "x": -14.97,
+            "y": -8.09,
             "z": -9.21
           },
           "rotation": {
@@ -70,10 +70,10 @@
         },
         {
           "id": 2,
-          "diameter": 7.58,
+          "diameter": 7.67,
           "position": {
-            "x": 14.97,
-            "y": -8.14,
+            "x": 14.89,
+            "y": -8.07,
             "z": -9.21
           },
           "rotation": {
@@ -83,7 +83,14 @@
           }
         }
       ],
-      "alignedDistances": []
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 29.86,
+          "axis": "X"
+        }
+      ]
     }
   ],
   "orientationFace": {
@@ -98,7 +105,19 @@
       "z": 0
     }
   },
+  "frontFace": {
+    "normal": {
+      "x": 0,
+      "y": -1,
+      "z": 0
+    },
+    "rotation": {
+      "x": 90,
+      "y": 0,
+      "z": 0
+    }
+  },
   "slideFaces": [],
   "totalHoles": 4,
-  "timestamp": "2025-01-14T21:12:26.400Z"
+  "timestamp": "2025-01-16T00:39:51.108Z"
 }

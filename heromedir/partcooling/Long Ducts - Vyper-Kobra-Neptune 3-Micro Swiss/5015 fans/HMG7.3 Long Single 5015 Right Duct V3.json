@@ -1,0 +1,104 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": 1,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 90,
+      "y": 90,
+      "z": 0
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -10.49,
+            "y": 26.93,
+            "z": 11.12
+          },
+          "dimensions": {
+            "width": 16,
+            "height": 6.25,
+            "center2D": {
+              "x": -5.5,
+              "y": -1.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -13.5,
+                "y": -4.25
+              },
+              "max": {
+                "x": 2.5,
+                "y": 2
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 0,
+            "y": 0,
+            "z": 1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -10.55,
+            "y": 5.8,
+            "z": 11.12
+          },
+          "dimensions": {
+            "width": 16,
+            "height": 5.25,
+            "center2D": {
+              "x": -5.5,
+              "y": 0.375
+            },
+            "bounds2D": {
+              "min": {
+                "x": -13.5,
+                "y": -2.25
+              },
+              "max": {
+                "x": 2.5,
+                "y": 3
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 17.42
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-27T00:16:10.178Z"
+}

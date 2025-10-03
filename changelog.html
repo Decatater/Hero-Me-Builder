@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero Me Builder Changelog</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #46638a;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #5a7496;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative; /* Added for absolute positioning of the home button */
+        }
+        
+        .tab-container {
+            display: flex;
+            background-color: #6887c2;
+            border-bottom: 1px solid #586ba8;
+        }
+        
+        .tab {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-weight: 600;
+        }
+        
+        .tab:hover {
+            background-color: #a4b1db;
+        }
+        
+        .tab.active {
+            background-color: #99e5d2;
+            border-bottom: 3px solid #689b8e;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        h2 {
+            color: #fcd9b9;
+            margin-top: 0;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #868686;
+        }
+        
+        ul {
+            padding-left: 20px;
+        }
+        
+        li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+            color: #fcd9b9
+        }
+        
+        .category {
+            font-weight: bold;
+            color: #42f48c;
+            margin-right: 5px;
+        }
+        
+        /* Home button styles */
+        .home-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background-color: #99e5d2;
+            color: #46638a;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            border: 2px solid #689b8e;
+        }
+        
+        .home-button:hover {
+            background-color: #689b8e;
+            color: #fcd9b9;
+        }
+        
+        /* Adjust header to make room for home button */
+        .header-with-button {
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+            color: #c7c7c7;
+            padding-left: 60px; /* Make room for the button */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Button -->
+        <a href="https://heromebuilder.site" class="home-button">Home</a>
+        
+        <h1 class="header-with-button">Hero Me Builder Changelog</h1>
+        <!--BELOW: Define Tabs-->
+        <div class="tab-container">
+            <div class="tab active" onclick="openTab(event, 'v018')">v0.1.8</div>
+            <div class="tab" onclick="openTab(event, 'v017')">v0.1.7</div>
+            <div class="tab" onclick="openTab(event, 'v016')">v0.1.6</div>
+            <div class="tab" onclick="openTab(event, 'v015')">v0.1.5</div>
+            <div class="tab" onclick="openTab(event, 'v014')">v0.1.4</div>
+            <div class="tab" onclick="openTab(event, 'v013')">v0.1.3</div>
+            <div class="tab" onclick="openTab(event, 'v012')">v0.1.2</div>
+            <div class="tab" onclick="openTab(event, 'v011')">v0.1.1</div>
+        </div>
+        <!--BELOW: Define Each Tabs Contents-->
+        <div id="v018" class="tab-content active">
+            <h2>Version 0.1.8 BETA - September 1 2025</h2>
+            <ul>
+                <li><span class="category">Fixed:</span> Major direct drive mount alignment fix using position-based face detection to correctly orient front faces toward camera</li>
+                <li><span class="category">Fixed:</span> Resolved backwards mounting issues for Creality direct drive mounts and select Bondtech models</li>
+                <li><span class="category">Added:</span> Issue Tracker page for bug reports and feature requests</li>
+                <li><span class="category">Added:</span> Contributors menu showcasing project contributors with slide-up interface</li>
+                <li><span class="category">Added:</span> Navigation buttons on main menu for quick access to Marker tool and Tracker</li>
+                <li><span class="category">Added:</span> Home button in builder interface for easy return to main menu</li>
+                <li><span class="category">Added:</span> JSON coverage statistics showing percentage of STL files with alignment data</li>
+                <li><span class="category">Marker Tool:</span> Added floating home button for easy navigation back to main site</li>
+            </ul>
+        </div>
+        
+        <div id="v017" class="tab-content">
+            <h2>Version 0.1.7 BETA - August 30 2025</h2>
+            <ul>
+                <li><span class="category">Improved:</span> Enhanced alignment system for direct drive mounts, hotend mounts, and risers with better face data support</li>
+                <li><span class="category">Fixed:</span> Simplified mounting logic to align hole patterns correctly and ensure front faces point toward camera</li>
+                <li><span class="category">Added:</span> Backwards compatibility for legacy JSON format while supporting enhanced face data with position and dimensions</li>
+                <li><span class="category">Marker Tool:</span> Visual improvements and enhanced JSON exports with face position and dimensional data</li>
+                <li><span class="category">Marker Tool:</span> Added support for front face and orientation face detection with enhanced geometric data</li>
+                <li><span class="category">Marker Tool:</span> Added working reset button functionality</li>
+                <li><span class="category">Marker Tool:</span> Added ability to load and reload existing JSON files for editing</li>
+            </ul>
+        </div>
+        
+        <div id="v016" class="tab-content">
+            <h2>Version 0.1.6 BETA - February 28 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Changelog Page</li>
+                <li><span class="category">Added:</span> Button for Changelogs page on main menu</li>
+                <li><span class="category">Added:</span> Translation tool to move incorrectly placed models</li>
+            </ul>
+        </div>
+        
+        <div id="v015" class="tab-content">
+            <h2>Version 0.1.5 BETA - February 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> README.txt for the ZIP export</li>
+                <li><span class="category">Added:</span> Link to the Hero Me Community Discord to the main menu</li>
+                <li><span class="category">Fixed:</span> Hotend Mount, Direct Drive Mount, and Direct Drive Riser alignment</li>
+                <li><span class="category">Parts added:</span> Almost all Hotend Mounts, Direct Drive Mounts, and Direct Drive Risers</li>
+            </ul>
+        </div>
+        
+        <div id="v014" class="tab-content">
+            <h2>Version 0.1.4 BETA - January 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Download Assembly button to save all STLs in the scene to a ZIP</li>
+                <li><span class="category">Added:</span> About section to the main menu</li>
+                <li><span class="category">Fixed:</span> Hero Me Builder Logo</li>
+                <li><span class="category">Parts added:</span> All CRTouch Mounts</li>
+            </ul>
+        </div>
+        
+        <div id="v013" class="tab-content">
+            <h2>Version 0.1.3 ALPHA - Early January 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Main menu, decreasing site load times by not loading the builder immediately</li>
+                <li><span class="category">Added:</span> Hero Me Builder Logo</li>
+                <li><span class="category">Parts added:</span> A few Hotend Mounts and most Gantry Adapters</li>
+            </ul>
+        </div>
+        <div id="v012" class="tab-content">
+            <h2>Version 0.1.2 ALPHA - December 2024</h2>
+            <ul>
+                <li><span class="category">Added:</span> Loading screen, in case the builder takes too long to load</li>
+                <li><span class="category">Added:</span> Wing/Probe Mount attachment logic</li>
+                <li><span class="category">Parts added:</span> A few Probe Mounts</li>
+            </ul>
+        </div>
+        <div id="v011" class="tab-content">
+            <h2>Version 0.1.1 Initial ALPHA - December 2024</h2>
+            <h2 style="text-align: center;">Hello World!</h2>
+            <ul>
+                <li><span class="category">Uploaded:</span> The Hero Me Builder to <a href="https://heromebuilder.site">heromebuilder.site</a>!</li>
+                <li><span class="category">Functionality:</span> Limited.</li>
+                <li><span class="category">Parts added:</span> Maybe one of each if that</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function openTab(evt, versionName) {
+            // Hide all tab content
+            const tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove("active");
+            }
+            
+            // Remove "active" class from all tabs
+            const tabs = document.getElementsByClassName("tab");
+            for (let i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove("active");
+            }
+            
+            // Show the specific tab content
+            document.getElementById(versionName).classList.add("active");
+            
+            // Add "active" class to the button that opened the tab
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+</body>
+</html>

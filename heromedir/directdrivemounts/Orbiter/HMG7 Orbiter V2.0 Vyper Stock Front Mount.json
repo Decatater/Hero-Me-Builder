@@ -24,7 +24,7 @@
         },
         {
           "id": 2,
-          "diameter": 7.61,
+          "diameter": 7.6,
           "position": {
             "x": -14,
             "y": -13.43,
@@ -50,8 +50,42 @@
   "orientationFace": {
     "normal": {
       "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "position": {
+      "x": 0,
+      "y": 0,
+      "z": -4.18
+    },
+    "dimensions": {
+      "width": 46,
+      "height": 42.88400077819824,
+      "centerX": -2.9199442756877403,
+      "centerY": -12.206333390268496
+    },
+    "rotation": {
+      "x": -180,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "frontFace": {
+    "normal": {
+      "x": 0,
       "y": -1,
       "z": 0
+    },
+    "position": {
+      "x": 1,
+      "y": -21.44,
+      "z": -1.48
+    },
+    "dimensions": {
+      "width": 40.00199890136719,
+      "height": 5.401527404785156,
+      "centerX": -3.0497421049037143,
+      "centerY": 0.40199012939928025
     },
     "rotation": {
       "x": 90,
@@ -61,5 +95,5 @@
   },
   "slideFaces": [],
   "totalHoles": 2,
-  "timestamp": "2025-01-14T19:23:41.513Z"
+  "timestamp": "2025-10-03T02:44:54.616Z"
 }

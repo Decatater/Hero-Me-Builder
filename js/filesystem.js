@@ -1,0 +1,528 @@
+// File System Module
+// Functions for directory navigation, file loading, and menu management
+
+// Load and cache directory structure from server
+async function loadDirectoryStructure() {
+    try {
+        console.log('Starting directory structure load...');
+        const response = await fetch('list-files.php');
+        console.log('Fetch response:', response);
+        
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Raw directory data:', data);
+        
+        directoryStructure = data;
+        console.log('Processed directory structure:', directoryStructure);
+        return directoryStructure;
+    } catch (error) {
+        console.error('Error loading directory structure:', error);
+        directoryStructure = [];
+        return directoryStructure;
+    }
+}
+
+// Load geometry data from JSON files
+// Show user-visible error message
+function showUserError(message) {
+    // Create error message element
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ff4444;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    errorDiv.textContent = message;
+
+    document.body.appendChild(errorDiv);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 5000);
+}
+
+async function loadGeometryData(modelPath) {
+    const jsonPath = modelPath.replace('.stl', '.json');
+    try {
+        const response = await fetch(jsonPath);
+        if (!response.ok) {
+            const fileName = modelPath.split('/').pop();
+            const errorMessage = `Missing geometry data for ${fileName}. This model cannot be attached without its .json file.`;
+            console.error(errorMessage);
+            showUserError(errorMessage);
+            return null;
+        }
+        const data = await response.json();
+        console.log('Loaded JSON data:', data);
+        return data;
+    } catch (error) {
+        const fileName = modelPath.split('/').pop();
+        const errorMessage = `Error loading geometry data for ${fileName}: ${error.message}`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        return null;
+    }
+}
+
+// Find directory by path in structure
+function findDirectoryByPath(paths, structure) {
+    if (!Array.isArray(paths)) {
+        paths = [paths];
+    }
+
+    console.log('Finding directories for paths:', paths);
+    
+    // Unwrap the outer array - this is the key fix
+    const actualStructure = Array.isArray(structure) && structure.length === 1 ? structure[0] : structure;
+    console.log('Searching in structure:', actualStructure);
+
+    // Filter out any undefined paths
+    const validPaths = paths.filter(path => path);
+    if (validPaths.length === 0) {
+        console.error('No valid paths provided to findDirectoryByPath');
+        return null;
+    }
+
+    const normalizedSearchPaths = validPaths.map(path => normalizePath(path));
+    console.log('Normalized search paths:', normalizedSearchPaths);
+    
+    let allContents = [];
+
+    function search(items, searchPath) {
+        if (!items || !searchPath) return null;
+
+        let contents = [];
+
+        for (const item of items) {
+            if (!item.path) {
+                console.log('Item missing path:', item);
+                continue;
+            }
+            
+            const normalizedItemPath = normalizePath(item.path);
+            console.log('Comparing paths:', {
+                searchPath,
+                itemPath: normalizedItemPath,
+                match: normalizedItemPath === searchPath
+            });
+
+            if (item.type === 'directory') {
+                if (normalizedItemPath === searchPath) {
+                    console.log('Found matching directory:', item);
+                    // Found the target directory, return its children
+                    return item.children || [];
+                }
+
+                // Continue searching in subdirectories
+                const found = search(item.children, searchPath);
+                if (found) contents = contents.concat(found);
+            }
+        }
+        return contents.length > 0 ? contents : null;
+    }
+
+    // Search for each path and combine results
+    normalizedSearchPaths.forEach(searchPath => {
+        const contents = search(actualStructure, searchPath);
+        if (contents) {
+            console.log('Found contents for path', searchPath, ':', contents);
+            allContents = [...allContents, ...contents];
+        } else {
+            console.log('No contents found for path:', searchPath);
+        }
+    });
+
+    return allContents.length > 0 ? allContents : null;
+}
+
+// Get files from cached directory structure
+function getFilesFromCache(targetFolder) {
+    console.log('Getting files for folder:', targetFolder);
+    console.log('Current directory structure:', directoryStructure);
+
+    if (!directoryStructure) {
+        console.warn('Directory structure not loaded yet');
+        return [];
+    }
+
+    function findDirectoryContents(items) {
+        for (const item of items) {
+            const normalizedPath = item.path.replace(/\\/g, '/');
+            const normalizedTarget = targetFolder.replace(/\\/g, '/');
+
+            console.log('Checking path:', normalizedPath, 'against target:', normalizedTarget);
+
+            if (item.type === 'directory' && normalizedPath === normalizedTarget) {
+                console.log('Found matching directory:', item);
+                return item.children
+                    .filter(child => child.type === 'file' && child.name.toLowerCase().endsWith('.stl'))
+                    .map(child => child.name);
+            }
+            if (item.children) {
+                const result = findDirectoryContents(item.children);
+                if (result) return result;
+            }
+        }
+        return null;
+    }
+
+    const results = findDirectoryContents(directoryStructure) || [];
+    console.log('Files found:', results);
+    return results;
+}
+
+// Legacy file list function (for backward compatibility)
+async function getFileList(targetFolder) {
+    try {
+        const response = await fetch('/list-files');
+        if (!response.ok) throw new Error('Network response was not ok');
+        const structure = await response.json();
+        console.log('Directory structure received:', structure);
+
+        // Direct search for the target folder
+        function findDirectoryContents(items) {
+            for (const item of items) {
+                // Format paths consistently
+                const normalizedItemPath = item.path.replace(/\\/g, '/');
+                const normalizedTargetPath = targetFolder.replace(/\\/g, '/');
+
+                // Log when we find a potential match
+                if (item.type === 'directory') {
+                    console.log('Checking directory:', normalizedItemPath, 'against target:', normalizedTargetPath);
+                }
+
+                // If we found our target directory, return its STL files
+                if (item.type === 'directory' && normalizedItemPath === normalizedTargetPath) {
+                    console.log('Found matching directory:', item.path);
+                    console.log('Directory contents:', item.children);
+
+                    const stlFiles = item.children
+                        .filter(child => child.type === 'file' && child.name.toLowerCase().endsWith('.stl'))
+                        .map(child => child.name);
+
+                    console.log('STL files found:', stlFiles);
+                    return stlFiles;
+                }
+
+                // If this directory has children, search them
+                if (item.children) {
+                    const result = findDirectoryContents(item.children);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+
+        const files = findDirectoryContents(structure) || [];
+        console.log('Final file list for', targetFolder, ':', files);
+        return files;
+    } catch (error) {
+        console.error('Error fetching file list:', error);
+        return [];
+    }
+}
+
+// Create safe folder ID for DOM elements
+function createFolderId(path) {
+    return btoa(path).replace(/[=\/+]/g, '');
+}
+
+// Menu content and navigation functions
+function updateMenuContent(menuElement) {
+    const current = currentMenuPath[currentMenuPath.length - 1];
+    if (!current || !current.folder) return;
+
+    let html = `
+        <div class="menu-container">
+            <div class="menu-header">
+                ${currentMenuPath.length > 1 ?
+            `<button class="back-button" onclick="navigateBack()">
+                        <span class="back-arrow"></span>
+                        <span>Back</span>
+                     </button>` :
+            `<div class="menu-title">${current.title}</div>`}
+            </div>
+            <div class="menu-content">`;
+
+    if (current.isCustomMenu) {
+        // Handle custom menu items
+        current.folder.forEach(dir => {
+            const folderId = createFolderId(dir.customData.path);
+            menuState.set(folderId, {
+                customData: dir.customData,
+                title: dir.customData.title
+            });
+
+            const isCustomFolder = dir.customData.title.toLowerCase().includes('custom');
+            const iconClass = isCustomFolder ? 'custom-star-icon' : 'folder-icon';
+
+            html += `
+                <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
+                    <span class="${iconClass}"></span>
+                    ${dir.customData.title}
+                </div>`;
+        });
+    } else {
+        // Get the normalized current base path
+        const currentBasePath = current.basePath.replace(/\\/g, '/');
+
+        // Filter items to only show direct children
+        const currentLevelItems = current.folder.filter(item => {
+            if (!item.path) return false;
+
+            const itemPath = item.path.replace(/\\/g, '/');
+            const relPath = itemPath.replace(currentBasePath, '').replace(/^\/+/, '');
+
+            // Only include items that are direct children (no additional path separators)
+            return !relPath.includes('/');
+        });
+
+        // Add directories first
+        const directories = currentLevelItems.filter(item => item.type === 'directory');
+        directories.forEach(dir => {
+            const fullPath = `${current.basePath}/${dir.name}`.replace(/^\/+/, '');
+            const folderId = createFolderId(fullPath);
+
+            menuState.set(folderId, {
+                folder: dir.children || [],
+                basePath: fullPath,
+                title: dir.name
+            });
+
+            const isCustomFolder = dir.name.toLowerCase().includes('custom');
+            const iconClass = isCustomFolder ? 'custom-star-icon' : 'folder-icon';
+
+            html += `
+                <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
+                    <span class="${iconClass}"></span>
+                    ${dir.name}
+                </div>`;
+        });
+
+        // Then add STL files
+        const files = currentLevelItems.filter(item =>
+            item.type === 'file' &&
+            item.name.toLowerCase().endsWith('.stl')
+        );
+
+        files.forEach(file => {
+            const fullPath = `${current.basePath}/${file.name}`.replace(/^\/+/, '');
+            html += `
+                <div class="menu-item file" onclick="event.stopPropagation(); attachModelAtPoint('${fullPath}')">
+                    <span class="file-icon"></span>
+                    <span class="file-name">${file.name.replace('.stl', '')}</span>
+                </div>`;
+        });
+    }
+
+    html += `
+            </div>
+        </div>`;
+
+    menuElement.innerHTML = html;
+}
+
+function hideMenu() {
+    document.getElementById('modelSelect').style.display = 'none';
+    selectedPoint = null;
+}
+
+// Navigation functions
+function navigateToFolder(folderId) {
+    const folderData = menuState.get(folderId);
+    if (!folderData) {
+        console.error('No folder data found for ID:', folderId);
+        return;
+    }
+
+    // Get current menu info
+    const currentMenu = currentMenuPath[currentMenuPath.length - 1];
+    const currentUserData = selectedPoint?.userData;
+    
+    if (folderData.customData) {
+    // Handle custom menu navigation
+    const directory = findDirectoryByPath(folderData.customData.path, directoryStructure);
+    if (!directory) return;
+
+    const filteredContents = folderData.customData.filter ?
+        directory.filter(item => folderData.customData.filter(item, currentUserData)) :
+        directory;
+
+    // Update selectedPoint's attachmentType if one was specified in the custom menu
+    // DISABLED: Don't change attachmentType as it affects alignment decisions
+    // if (folderData.customData.attachmentType && selectedPoint) {
+    //     // Store original type before changing
+    //     if (!selectedPoint.userData.originalType) {
+    //         selectedPoint.userData.originalType = selectedPoint.userData.attachmentType;
+    //     }
+    //     selectedPoint.userData.attachmentType = folderData.customData.attachmentType;
+    // }
+
+    currentMenuPath.push({
+        folder: filteredContents,
+        basePath: folderData.customData.path,
+        title: folderData.customData.title,
+        filter: folderData.customData.filter,
+        userData: {
+            ...currentUserData,
+            attachmentType: folderData.customData.attachmentType || currentUserData?.attachmentType
+        }
+    });
+    } else {
+        // Check if we're in a regular menu or custom menu path
+        const menuType = selectedPoint?.userData?.attachmentType;
+        const menuConfig = categoryMenus[menuType];
+
+        // For regular menu navigation
+        if (menuConfig?.filter) {
+            // Apply the current menu's filter (handles part cooling)
+            const filteredContents = filterContents(folderData.folder, currentUserData);
+            
+            currentMenuPath.push({
+                ...folderData,
+                folder: filteredContents,
+                basePath: folderData.basePath,
+                title: folderData.title,
+                filter: menuConfig.filter,
+                userData: currentUserData
+            });
+        } else if (currentMenu?.filter) {
+            // Apply custom menu's filter (handles wing/custom menus)
+            const filteredContents = folderData.folder.filter(item => 
+                currentMenu.filter(item, currentUserData)
+            );
+            
+            currentMenuPath.push({
+                ...folderData,
+                folder: filteredContents,
+                basePath: folderData.basePath,
+                title: folderData.title,
+                filter: currentMenu.filter,
+                userData: currentUserData
+            });
+        } else {
+            currentMenuPath.push(folderData);
+        }
+    }
+
+    const menuElement = document.getElementById('modelSelect');
+    updateMenuContent(menuElement);
+    menuElement.style.display = 'block';
+}
+
+function navigateBack() {
+    if (currentMenuPath.length > 1) {
+        currentMenuPath.pop();
+        const menuElement = document.getElementById('modelSelect');
+        updateMenuContent(menuElement);
+        menuElement.style.display = 'block'; // Ensure menu stays visible
+    }
+}
+
+// Create dropdown menu for attachment type
+async function createDropdownForType(type) {
+    // Use the original type if it exists, otherwise use the current type
+    const menuType = selectedPoint?.userData?.originalType || type;
+    console.log('Creating menu for type:', menuType);
+
+    menuState.clear();
+    const menu = categoryMenus[menuType];
+    if (!menu) {
+        console.error('No menu configuration found for type:', menuType);
+        return '';
+    }
+
+    console.log('Found menu config:', menu);
+
+    if (menu.isCustomMenu) {
+        console.log('Creating custom menu');
+        const customMenu = menu.createCustomMenu(selectedPoint?.userData);
+        if (customMenu.type === 'category') {
+            currentMenuPath = [{
+                folder: customMenu.items.map(item => ({
+                    type: 'directory',
+                    name: item.title,
+                    customData: item
+                })),
+                basePath: '',
+                title: menu.title,
+                isCustomMenu: true
+            }];
+        }
+    } else {
+        // Original directory-based menu code
+        console.log('Creating directory-based menu with path:', menu.paths[0]);
+        console.log('Current directory structure:', directoryStructure);
+        
+        const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
+        console.log('Directory search result:', directory);
+
+        if (!directory) {
+            console.error('No directory found for path:', menu.paths[0]);
+            return '';
+        }
+
+        const filteredContents = menu.filter ?
+            filterContents(directory, selectedPoint?.userData) :
+            directory;
+            
+        console.log('Filtered contents:', filteredContents);
+
+        currentMenuPath = [{
+            folder: filteredContents,
+            basePath: menu.paths[0],
+            title: menu.title
+        }];
+    }
+
+    console.log('Current menu path:', currentMenuPath);
+
+    const menuElement = document.createElement('div');
+    updateMenuContent(menuElement);
+    return menuElement.innerHTML;
+}
+
+// Content filtering function
+function filterContents(contents, userData) {
+    const menuType = selectedPoint?.userData?.attachmentType;
+    const menuConfig = categoryMenus[menuType];
+    
+    if (!menuConfig?.filter) {
+        return contents;
+    }
+    
+    return contents.filter(item => menuConfig.filter(item, userData));
+}
+
+// Export functions for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    // Node.js environment
+    module.exports = {
+        loadDirectoryStructure,
+        loadGeometryData,
+        findDirectoryByPath,
+        getFilesFromCache,
+        getFileList,
+        createFolderId,
+        updateMenuContent,
+        hideMenu,
+        navigateToFolder,
+        navigateBack,
+        createDropdownForType,
+        filterContents
+    };
+}

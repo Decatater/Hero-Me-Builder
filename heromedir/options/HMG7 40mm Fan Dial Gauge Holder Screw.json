@@ -1,0 +1,139 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": 0,
+        "z": -1
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 3.47,
+          "position": {
+            "x": -15.99,
+            "y": -20.15,
+            "z": -16.75
+          },
+          "rotation": {
+            "x": 180,
+            "y": 0,
+            "z": -90
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 3.35,
+          "position": {
+            "x": 15.88,
+            "y": -20.12,
+            "z": -16.75
+          },
+          "rotation": {
+            "x": 180,
+            "y": 0,
+            "z": -90
+          }
+        },
+        {
+          "id": 3,
+          "diameter": 3.46,
+          "position": {
+            "x": -15.97,
+            "y": 11.85,
+            "z": -16.75
+          },
+          "rotation": {
+            "x": 180,
+            "y": 0,
+            "z": -90
+          }
+        },
+        {
+          "id": 4,
+          "diameter": 3.42,
+          "position": {
+            "x": 16.02,
+            "y": 11.87,
+            "z": -16.75
+          },
+          "rotation": {
+            "x": 180,
+            "y": 0,
+            "z": -90
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 31.87,
+          "axis": "X"
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "distance": 32,
+          "axis": "Y"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "distance": 31.99,
+          "axis": "X"
+        }
+      ]
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 0.84,
+      "z": 0.54
+    },
+    "position": {
+      "x": 0,
+      "y": 33.96,
+      "z": 5.66
+    },
+    "dimensions": {
+      "width": 21.43500040765726,
+      "height": 14.847999572753906,
+      "centerX": 8.48711326763379,
+      "centerY": 1.888388825774598
+    },
+    "rotation": {
+      "x": -57.5,
+      "y": 0,
+      "z": -90
+    }
+  },
+  "frontFace": {
+    "normal": {
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    "position": {
+      "x": 0,
+      "y": -4.17,
+      "z": -11.76
+    },
+    "dimensions": {
+      "width": 45.93251797134361,
+      "height": 40.001003287833676,
+      "centerX": -11.411934362097472,
+      "centerY": -17.27457561161653
+    },
+    "rotation": {
+      "x": -0.01,
+      "y": 0,
+      "z": -90
+    }
+  },
+  "slideFaces": [],
+  "totalHoles": 4,
+  "timestamp": "2025-09-03T15:49:03.815Z"
+}

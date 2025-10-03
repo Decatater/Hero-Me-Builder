@@ -1,0 +1,188 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": -0.99,
+      "z": 0.1
+    },
+    "rotation": {
+      "x": 84,
+      "y": -0.02,
+      "z": -90
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": 90,
+            "z": 0
+          },
+          "position": {
+            "x": -19.05,
+            "y": 15.82,
+            "z": 8.53
+          },
+          "dimensions": {
+            "width": 16.75,
+            "height": 6.75,
+            "center2D": {
+              "x": -5.625,
+              "y": -0.375
+            },
+            "bounds2D": {
+              "min": {
+                "x": -14,
+                "y": -3.75
+              },
+              "max": {
+                "x": 2.75,
+                "y": 3
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": 90,
+            "z": 0
+          },
+          "position": {
+            "x": -19.05,
+            "y": 17.04,
+            "z": 28.91
+          },
+          "dimensions": {
+            "width": 14.25,
+            "height": 7.5,
+            "center2D": {
+              "x": -5.625,
+              "y": 1.75
+            },
+            "bounds2D": {
+              "min": {
+                "x": -12.75,
+                "y": -2
+              },
+              "max": {
+                "x": 1.5,
+                "y": 5.5
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 14.73
+        }
+      ]
+    },
+    {
+      "groupId": 2,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": -90,
+            "z": 0
+          },
+          "position": {
+            "x": 15.55,
+            "y": 15.94,
+            "z": 7.68
+          },
+          "dimensions": {
+            "width": 16.75,
+            "height": 7,
+            "center2D": {
+              "x": 5.625,
+              "y": 0.5
+            },
+            "bounds2D": {
+              "min": {
+                "x": -2.75,
+                "y": -3
+              },
+              "max": {
+                "x": 14,
+                "y": 4
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": -1,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": -90,
+            "z": 0
+          },
+          "position": {
+            "x": 15.55,
+            "y": 16.45,
+            "z": 29.36
+          },
+          "dimensions": {
+            "width": 14.5,
+            "height": 7.5,
+            "center2D": {
+              "x": 5,
+              "y": 1.25
+            },
+            "bounds2D": {
+              "min": {
+                "x": -2.25,
+                "y": -2.5
+              },
+              "max": {
+                "x": 12.25,
+                "y": 5
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 14.8
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-24T01:55:46.983Z"
+}

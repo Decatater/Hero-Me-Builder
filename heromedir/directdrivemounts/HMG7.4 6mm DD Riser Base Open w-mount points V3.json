@@ -10,10 +10,10 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.52,
+          "diameter": 7.6,
           "position": {
-            "x": 14.95,
-            "y": -8.72,
+            "x": 15,
+            "y": -8.74,
             "z": 1.83
           },
           "rotation": {
@@ -24,9 +24,9 @@
         },
         {
           "id": 2,
-          "diameter": 7.59,
+          "diameter": 7.53,
           "position": {
-            "x": -15.01,
+            "x": -14.98,
             "y": -8.74,
             "z": 1.83
           },
@@ -41,7 +41,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 29.96,
+          "distance": 29.99,
           "axis": "X"
         }
       ]
@@ -56,10 +56,10 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.92,
+          "diameter": 8.01,
           "position": {
-            "x": -14.95,
-            "y": -8.7,
+            "x": -14.91,
+            "y": -8.73,
             "z": -4.17
           },
           "rotation": {
@@ -70,14 +70,14 @@
         },
         {
           "id": 2,
-          "diameter": 7.85,
+          "diameter": 7.89,
           "position": {
-            "x": 15,
-            "y": -8.73,
+            "x": 15.02,
+            "y": -8.72,
             "z": -4.17
           },
           "rotation": {
-            "x": -180,
+            "x": 180,
             "y": 0,
             "z": -90
           }
@@ -87,13 +87,25 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 29.96,
+          "distance": 29.93,
           "axis": "X"
         }
       ]
     }
   ],
   "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "rotation": {
+      "x": -180,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "frontFace": {
     "normal": {
       "x": 0,
       "y": -1,
@@ -107,5 +119,5 @@
   },
   "slideFaces": [],
   "totalHoles": 4,
-  "timestamp": "2025-01-14T19:50:21.148Z"
+  "timestamp": "2025-01-15T23:49:48.691Z"
 }

@@ -10,10 +10,10 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 3.24,
+          "diameter": 3.19,
           "position": {
-            "x": 14.03,
-            "y": -9.15,
+            "x": 14,
+            "y": -9.12,
             "z": 3.31
           },
           "rotation": {
@@ -24,10 +24,10 @@
         },
         {
           "id": 2,
-          "diameter": 3.17,
+          "diameter": 3.18,
           "position": {
             "x": -15.99,
-            "y": -9.11,
+            "y": -9.12,
             "z": 3.31
           },
           "rotation": {
@@ -41,7 +41,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 30.03,
+          "distance": 29.99,
           "axis": "X"
         }
       ]
@@ -50,8 +50,42 @@
   "orientationFace": {
     "normal": {
       "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "position": {
+      "x": 0,
+      "y": -0.5,
+      "z": -5.69
+    },
+    "dimensions": {
+      "width": 46,
+      "height": 33.249000549316406,
+      "centerX": 7.26333903807074,
+      "centerY": -1.888219272110888
+    },
+    "rotation": {
+      "x": -180,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "frontFace": {
+    "normal": {
+      "x": 0,
       "y": -1,
       "z": 0
+    },
+    "position": {
+      "x": -1,
+      "y": -17.12,
+      "z": -1.19
+    },
+    "dimensions": {
+      "width": 40.00199890136719,
+      "height": 9,
+      "centerX": -2.255104102987346,
+      "centerY": 3.043086927103621
     },
     "rotation": {
       "x": 90,
@@ -61,5 +95,5 @@
   },
   "slideFaces": [],
   "totalHoles": 2,
-  "timestamp": "2025-01-14T19:31:02.903Z"
+  "timestamp": "2025-10-03T02:48:39.380Z"
 }

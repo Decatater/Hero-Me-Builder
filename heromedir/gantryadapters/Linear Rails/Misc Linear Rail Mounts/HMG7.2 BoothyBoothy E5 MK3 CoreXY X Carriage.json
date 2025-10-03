@@ -1,0 +1,111 @@
+{
+  "faces": [
+    {
+      "faceId": 1,
+      "normal": {
+        "x": 0,
+        "y": -1,
+        "z": 0
+      },
+      "holes": [
+        {
+          "id": 1,
+          "diameter": 3.4,
+          "position": {
+            "x": 1.52,
+            "y": -24.8,
+            "z": -19.9
+          },
+          "rotation": {
+            "x": 90,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": 2,
+          "diameter": 3.4,
+          "position": {
+            "x": 1.51,
+            "y": -24.8,
+            "z": 12.1
+          },
+          "rotation": {
+            "x": 90,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": 3,
+          "diameter": 3.4,
+          "position": {
+            "x": 13.92,
+            "y": -24.8,
+            "z": -19.9
+          },
+          "rotation": {
+            "x": 90,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": 4,
+          "diameter": 3.4,
+          "position": {
+            "x": 13.92,
+            "y": -24.8,
+            "z": 12.1
+          },
+          "rotation": {
+            "x": 90,
+            "y": 0,
+            "z": 0
+          }
+        }
+      ],
+      "alignedDistances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 32,
+          "axis": "Z"
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "distance": 12.4,
+          "axis": "X"
+        },
+        {
+          "from": 2,
+          "to": 4,
+          "distance": 12.41,
+          "axis": "X"
+        },
+        {
+          "from": 3,
+          "to": 4,
+          "distance": 32.01,
+          "axis": "Z"
+        }
+      ]
+    }
+  ],
+  "orientationFace": {
+    "normal": {
+      "x": -1,
+      "y": 0,
+      "z": 0
+    },
+    "rotation": {
+      "x": 90,
+      "y": -90,
+      "z": 0
+    }
+  },
+  "slideFaces": [],
+  "totalHoles": 4,
+  "timestamp": "2025-01-17T20:14:58.953Z"
+}

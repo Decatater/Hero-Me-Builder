@@ -1,0 +1,104 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": 0.51,
+      "y": 0,
+      "z": 0.86
+    },
+    "rotation": {
+      "x": 0,
+      "y": 30.5,
+      "z": 180
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": -0.86,
+            "y": 0,
+            "z": 0.51
+          },
+          "rotation": {
+            "x": 0,
+            "y": -59.5,
+            "z": 180
+          },
+          "position": {
+            "x": -13.76,
+            "y": -3.75,
+            "z": -5.35
+          },
+          "dimensions": {
+            "width": 16.5,
+            "height": 5.25,
+            "center2D": {
+              "x": -5.75,
+              "y": -0.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -14,
+                "y": -2.75
+              },
+              "max": {
+                "x": 2.5,
+                "y": 2.5
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": -0.86,
+            "y": 0,
+            "z": 0.51
+          },
+          "rotation": {
+            "x": 0,
+            "y": -59.5,
+            "z": -180
+          },
+          "position": {
+            "x": -12.62,
+            "y": 16.86,
+            "z": -3.41
+          },
+          "dimensions": {
+            "width": 14,
+            "height": 6.25,
+            "center2D": {
+              "x": -4.75,
+              "y": -2.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -11.75,
+                "y": -5.25
+              },
+              "max": {
+                "x": 2.25,
+                "y": 1
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 14.91
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-21T02:53:54.220Z"
+}

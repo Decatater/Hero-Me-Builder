@@ -1,1 +1,0 @@
-1) the menu back button closes the menu instead of going up a folder (or closing if its the start directory)

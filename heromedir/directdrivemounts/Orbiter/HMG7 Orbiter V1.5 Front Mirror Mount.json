@@ -10,7 +10,7 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.61,
+          "diameter": 7.6,
           "position": {
             "x": 15,
             "y": -9.12,
@@ -41,7 +41,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 30.01,
+          "distance": 30,
           "axis": "X"
         }
       ]
@@ -50,8 +50,42 @@
   "orientationFace": {
     "normal": {
       "x": 0,
+      "y": 0,
+      "z": -1
+    },
+    "position": {
+      "x": 0,
+      "y": -0.5,
+      "z": -4.19
+    },
+    "dimensions": {
+      "width": 48,
+      "height": 33.259002685546875,
+      "centerX": 7.303128701014131,
+      "centerY": -0.8249185856031147
+    },
+    "rotation": {
+      "x": -180,
+      "y": 0,
+      "z": 0
+    }
+  },
+  "frontFace": {
+    "normal": {
+      "x": 0,
       "y": -1,
       "z": 0
+    },
+    "position": {
+      "x": 0,
+      "y": -17.13,
+      "z": -1.19
+    },
+    "dimensions": {
+      "width": 40.003997802734375,
+      "height": 6,
+      "centerX": 1.5815359143454017,
+      "centerY": -0.31232811050132625
     },
     "rotation": {
       "x": 90,
@@ -61,5 +95,5 @@
   },
   "slideFaces": [],
   "totalHoles": 2,
-  "timestamp": "2025-01-14T19:24:46.244Z"
+  "timestamp": "2025-10-03T02:49:31.886Z"
 }

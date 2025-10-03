@@ -10,11 +10,11 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 5.29,
+          "diameter": 6,
           "position": {
             "x": -15,
             "y": -10.51,
-            "z": 1.56
+            "z": 3.56
           },
           "rotation": {
             "x": -180,
@@ -24,11 +24,11 @@
         },
         {
           "id": 2,
-          "diameter": 5.29,
+          "diameter": 6,
           "position": {
             "x": 15,
             "y": -10.51,
-            "z": 1.56
+            "z": 3.56
           },
           "rotation": {
             "x": -180,
@@ -96,6 +96,18 @@
   "orientationFace": {
     "normal": {
       "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": -180
+    }
+  },
+  "frontFace": {
+    "normal": {
+      "x": 0,
       "y": -1,
       "z": 0
     },
@@ -107,5 +119,5 @@
   },
   "slideFaces": [],
   "totalHoles": 4,
-  "timestamp": "2025-01-14T21:47:55.256Z"
+  "timestamp": "2025-01-15T16:36:53.456Z"
 }

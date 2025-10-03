@@ -1,0 +1,62 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": 0,
+      "y": 0,
+      "z": 1
+    },
+    "rotation": {
+      "x": 0,
+      "y": 0,
+      "z": -180
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "rotation": {
+            "x": -90,
+            "y": 0,
+            "z": -180
+          },
+          "position": {
+            "x": -1.07,
+            "y": 10.8,
+            "z": -5.7
+          },
+          "dimensions": {
+            "width": 4.25,
+            "height": 18.5,
+            "center2D": {
+              "x": -2.125,
+              "y": 5.75
+            },
+            "bounds2D": {
+              "min": {
+                "x": -4.25,
+                "y": -3.5
+              },
+              "max": {
+                "x": 0,
+                "y": 15
+              }
+            }
+          }
+        }
+      ],
+      "distances": []
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-08-26T19:37:35.908Z"
+}

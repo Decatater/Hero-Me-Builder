@@ -1,0 +1,104 @@
+{
+  "faces": [],
+  "orientationFace": {
+    "normal": {
+      "x": -0.51,
+      "y": 0,
+      "z": 0.86
+    },
+    "rotation": {
+      "x": 0,
+      "y": -30.5,
+      "z": 180
+    }
+  },
+  "frontFace": null,
+  "slideFaces": [
+    {
+      "groupId": 1,
+      "faces": [
+        {
+          "id": 1,
+          "normal": {
+            "x": 0.86,
+            "y": 0,
+            "z": 0.51
+          },
+          "rotation": {
+            "x": 0,
+            "y": 59.5,
+            "z": -180
+          },
+          "position": {
+            "x": 13.22,
+            "y": 20.89,
+            "z": -4.43
+          },
+          "dimensions": {
+            "width": 14,
+            "height": 6.25,
+            "center2D": {
+              "x": 6,
+              "y": 2.125
+            },
+            "bounds2D": {
+              "min": {
+                "x": -1,
+                "y": -1
+              },
+              "max": {
+                "x": 13,
+                "y": 5.25
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "normal": {
+            "x": 0.86,
+            "y": 0,
+            "z": 0.51
+          },
+          "rotation": {
+            "x": 0,
+            "y": 59.5,
+            "z": -180
+          },
+          "position": {
+            "x": 13.22,
+            "y": -2.65,
+            "z": -4.44
+          },
+          "dimensions": {
+            "width": 16.5,
+            "height": 5.5,
+            "center2D": {
+              "x": 4.75,
+              "y": 1
+            },
+            "bounds2D": {
+              "min": {
+                "x": -3.5,
+                "y": -1.75
+              },
+              "max": {
+                "x": 13,
+                "y": 3.75
+              }
+            }
+          }
+        }
+      ],
+      "distances": [
+        {
+          "from": 1,
+          "to": 2,
+          "distance": 16.25
+        }
+      ]
+    }
+  ],
+  "totalHoles": 0,
+  "timestamp": "2025-01-21T02:53:31.825Z"
+}

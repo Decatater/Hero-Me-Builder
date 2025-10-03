@@ -55,6 +55,8 @@
             cursor: pointer;
             transition: background-color 0.3s;
             min-width: 200px;
+            text-decoration: none;
+            text-align: center;
         }
 
         .menu-button:hover {
@@ -94,7 +96,6 @@
             background-color: #c0392b;
         }
 
-        /* Modifications to the model select menu */
         #modelSelect {
             width: 380px !important;
             max-height: 400px !important;
@@ -151,8 +152,243 @@
             opacity: 0;
             visibility: hidden;
         }
+
+        .disclaimer-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #2c3e50e6;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 2000;
+        }
+
+        .discord-button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .discord-button:hover {
+            background-color: #4752C4;
+        }
+
+        .contributors-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 50px;
+            background-color: #52c41a;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            z-index: 3000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .contributors-button:hover {
+            background-color: #73d13d;
+            transform: translateY(-2px);
+        }
+
+        .contributors-button.open {
+            background-color: #fadb14;
+        }
+
+        .contributors-button.open:hover {
+            background-color: #ffec3d;
+        }
+
+        .utility-buttons {
+            position: fixed;
+            bottom: 80px; /* Position above the contributors button (50px height + 20px bottom + 10px gap) */
+            left: 20px;
+            width: 200px;
+            height: 40px;
+            display: flex;
+            gap: 5px;
+            z-index: 2998;
+        }
+
+        .utility-button {
+            flex: 1;
+            height: 100%;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .marker-button {
+            background-color: #1890ff;
+        }
+
+        .marker-button:hover {
+            background-color: #40a9ff;
+            transform: translateY(-1px);
+        }
+
+        .tracker-button {
+            background-color: #ff4d4f;
+        }
+
+        .tracker-button:hover {
+            background-color: #ff7875;
+            transform: translateY(-1px);
+        }
+
+        .contributors-menu {
+            position: fixed;
+            bottom: -100vh;
+            left: 20px;
+            width: 200px;
+            height: calc(100vh - 90px);
+            background-color: #2c3e50;
+            border-radius: 25px 25px 0 0;
+            transition: bottom 0.4s ease;
+            z-index: 2999;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .contributors-menu.open {
+            bottom: 70px;
+        }
+
+        .home-icon-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: #52c41a;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .home-icon-button:hover {
+            background-color: #73d13d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .json-coverage-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(44, 62, 80, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 2000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            min-width: 200px;
+        }
+
+        .coverage-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #99e5d2;
+        }
+
+        .coverage-stat {
+            margin-bottom: 4px;
+        }
+
+        .coverage-percent {
+            font-size: 18px;
+            font-weight: bold;
+            color: #42f48c;
+        }
+
+        .contributors-header {
+            padding: 20px 10px 15px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .contributors-list {
+            padding: 20px 15px;
+            color: white;
+        }
+
+        .contributor-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #34495e;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+        }
+
+        .contributor-item:hover {
+            background-color: #3498db;
+        }
+
+        .close-contributors {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+
+        .close-contributors:hover {
+            background-color: #e74c3c;
+        }
     </style>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
@@ -163,19 +399,20 @@
         <div class="menu-buttons">
             <button class="menu-button" onclick="startBuilder()">Start Builder</button>
             <button class="menu-button" onclick="showAbout()">About</button>
+            <a href="changelog.html" class="menu-button">Changelogs</a>
         </div>
     </div>
 
     <div id="aboutSection">
         <div class="about-content">
-            <h2>How to Use the Hero Me Builder</h2>
-            <p>Welcome to the Hero Me Gen 7 Builder! Here's how to use it:</p>
+            <h2>Hero Me Builder Instructions</h2>
             <ul>
                 <li>Click and drag to rotate the view</li>
                 <li>Scroll to zoom in/out</li>
                 <li>Click on the purple attachment points to add parts</li>
                 <li>Double-click on parts to remove them</li>
-                <li>Use the up/down arrows to adjust part positions when available</li>
+                <li>Use the blue up/down arrows to adjust part cooling ducts and probe mounts</li>
+                <li>If things don't line up correctly (which is common), click the move icon (four arrows) then click the problematic model to translate it</li>
                 <li>Click the "Download Assembly" button to save your work</li>
             </ul>
         </div>
@@ -189,11 +426,60 @@
     
     <div id="modelSelect"></div>
 
+    <div class="disclaimer-box">
+        <p>Not all Hero Me printer specific parts are currently compatible with the Builder. If you find your assembly incomplete or just have questions, join the Hero Me Community Discord (for free) for extended support and assembly tips!</p>
+        <a href="https://discord.gg/QHKqQrvzZv" class="discord-button" target="_blank">Join Discord</a>
+    </div>
+
+    <!-- JSON Coverage Stats -->
+    <div id="jsonCoverageBox" class="json-coverage-box">
+        <div class="coverage-title">Part Coverage</div>
+        <div class="coverage-stat">Loading...</div>
+    </div>
+
+    <!-- Utility Buttons -->
+    <div class="utility-buttons">
+        <a href="https://heromebuilder.site/marker" class="utility-button marker-button">Marker</a>
+        <a href="https://heromebuilder.site/tracker" class="utility-button tracker-button">Tracker</a>
+    </div>
+
+    <!-- Home Button for Builder (hidden initially) -->
+    <button class="home-icon-button" onclick="goHome()" title="Back to Main Menu">
+        <i class="fas fa-home"></i>
+    </button>
+
+    <!-- Contributors Button and Menu -->
+    <button class="contributors-button" onclick="toggleContributors()">Contributors</button>
+    
+    <div id="contributorsMenu" class="contributors-menu">
+        <div class="contributors-header">Contributors</div>
+        <div class="contributors-list">
+            <div class="contributor-item">TheSlumberingOne</div>
+            <div class="contributor-item">THE_LAST_JAGUAR</div>
+            <div class="contributor-item">BSense</div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three/examples/js/exporters/STLExporter.js"></script>
+
+    <!-- Hero Me Builder Modular Scripts - Load in dependency order -->
+    <script src="js/state.js"></script>
+    <script src="js/geometry.js"></script>
+    <script src="js/patterns.js"></script>
+    <script src="js/filesystem.js"></script>
+    <script src="js/scene.js"></script>
+    <!-- Specialized alignment modules - load before models.js -->
+    <script src="js/wings-and-probes.js"></script>
+    <script src="js/gantry-systems.js"></script>
+    <script src="js/hotends-and-drives.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/main.js"></script>
 
     <script>
         let appScriptLoaded = false;
@@ -201,14 +487,25 @@
         function startBuilder() {
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('loadingScreen').style.display = 'flex';
+            document.querySelector('.disclaimer-box').style.display = 'none';
+            
+            // Hide utility buttons when builder loads
+            document.querySelector('.utility-buttons').style.display = 'none';
+            document.querySelector('.contributors-button').style.display = 'none';
+            document.getElementById('contributorsMenu').style.display = 'none';
+            document.getElementById('jsonCoverageBox').style.display = 'none';
+            
+            // Show home button in builder
+            document.querySelector('.home-icon-button').style.display = 'flex';
             
             if (!appScriptLoaded) {
-                const script = document.createElement('script');
-                script.src = 'app.js';
-                script.onload = function() {
-                    appScriptLoaded = true;
-                };
-                document.body.appendChild(script);
+                appScriptLoaded = true;
+                // Initialize the Hero Me Builder application
+                if (typeof init === 'function') {
+                    init();
+                } else {
+                    console.error('init function not found - modules may not have loaded correctly');
+                }
             } else {
                 location.reload();
             }
@@ -221,6 +518,48 @@
         function hideAbout() {
             document.getElementById('aboutSection').style.display = 'none';
         }
+
+        function toggleContributors() {
+            const menu = document.getElementById('contributorsMenu');
+            const button = document.querySelector('.contributors-button');
+            
+            if (menu.classList.contains('open')) {
+                menu.classList.remove('open');
+                button.classList.remove('open');
+            } else {
+                menu.classList.add('open');
+                button.classList.add('open');
+            }
+        }
+
+        function goHome() {
+            // Simply reload the page to return to main menu
+            location.reload();
+        }
+
+        // Load JSON coverage stats on page load
+        async function loadJsonCoverage() {
+            try {
+                const response = await fetch('json-coverage.php');
+                const data = await response.json();
+                
+                const coverageBox = document.getElementById('jsonCoverageBox');
+                const stats = coverageBox.querySelector('.coverage-stat');
+                
+                stats.innerHTML = `
+                    <div>STL Files: ${data.stl_count}</div>
+                    <div>With JSON: ${data.matched_count}</div>
+                    <div class="coverage-percent">${data.coverage_percent}% Coverage</div>
+                `;
+            } catch (error) {
+                console.error('Failed to load JSON coverage stats:', error);
+                const stats = document.getElementById('jsonCoverageBox').querySelector('.coverage-stat');
+                stats.innerHTML = 'Coverage stats unavailable';
+            }
+        }
+
+        // Load coverage stats when page loads
+        document.addEventListener('DOMContentLoaded', loadJsonCoverage);
     </script>
 </body>
 </html>
