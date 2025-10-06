@@ -80,6 +80,227 @@ function onMouseMove(event) {
     }
 }
 
+// Helper function to check if an object is a descendant of a parent
+function isDescendantOf(child, parent) {
+    let current = child;
+    while (current && current !== parent) {
+        current = current.parent;
+    }
+    return current === parent;
+}
+
+// Touch event handlers for mobile support
+let touchStartTime = 0;
+let touchStartPos = { x: 0, y: 0 };
+let isDragging = false;
+let dragAxis = null;
+let dragStartValue = 0;
+let selectedArrowForDrag = null;
+
+// Double tap detection for mobile
+let lastTapTime = 0;
+let tapCount = 0;
+const DOUBLE_TAP_DELAY = 300; // ms
+
+function onTouchStart(event) {
+    if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        touchStartTime = Date.now();
+        touchStartPos.x = touch.clientX;
+        touchStartPos.y = touch.clientY;
+
+        // Reset drag state - we're going for tap-based movement now
+        isDragging = false;
+        selectedArrowForDrag = null;
+        dragAxis = null;
+    }
+}
+
+function onTouchMove(event) {
+    // Simplified - no drag handling for move tool, just track movement for tap detection
+    if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+        const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        // If user moved significantly, mark as dragging (for camera movement detection)
+        if (moveDistance > 10) {
+            isDragging = true;
+        }
+    }
+}
+
+function onTouchEnd(event) {
+    if (event.changedTouches.length === 1) {
+        const touch = event.changedTouches[0];
+        const touchEndTime = Date.now();
+        const touchDuration = touchEndTime - touchStartTime;
+
+        // Check if it was a quick tap (not a drag)
+        const deltaX = Math.abs(touch.clientX - touchStartPos.x);
+        const deltaY = Math.abs(touch.clientY - touchStartPos.y);
+        const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        // Reset drag state
+        if (isDragging) {
+            isDragging = false;
+            selectedArrowForDrag = null;
+            dragAxis = null;
+            dragStartValue = 0;
+            event.preventDefault();
+            return;
+        }
+
+        // Only register as tap if it was quick and didn't move much
+        if (touchDuration < 300 && moveDistance < 10) {
+            event.preventDefault(); // Prevent mouse event emulation
+
+            // Update mouse coordinates for raycasting
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Handle translation mode taps - both arrow clicks and model selection
+            if (isTranslationMode) {
+                console.log('Mobile tap in translation mode at:', mouse.x, mouse.y);
+                raycaster.setFromCamera(mouse, camera);
+
+                // First check for translation arrow taps
+                if (translationArrows.length > 0) {
+                    const arrowIntersects = raycaster.intersectObjects(translationArrows, true);
+
+                    if (arrowIntersects.length > 0) {
+                        // Find the clicked arrow
+                        let arrow = arrowIntersects[0].object;
+
+                        // If we hit a child of the group, get the parent arrow group
+                        while (arrow.parent && !arrow.userData?.type) {
+                            arrow = arrow.parent;
+                        }
+
+                        if (arrow.userData?.type === 'translationArrow' && selectedForTranslation) {
+                            // Move the model based on the arrow direction - same as desktop
+                            const moveAmount = 1; // 1mm increment
+                            const direction = arrow.userData.direction;
+                            const axis = arrow.userData.axis;
+
+                            // Calculate movement based on the arrow's direction vector
+                            let actualMoveAmount = moveAmount;
+                            // Use the actual direction vector components, not the stored axis
+                            if (direction.x !== 0) {
+                                actualMoveAmount = moveAmount * direction.x;
+                            } else if (direction.y !== 0) {
+                                actualMoveAmount = moveAmount * direction.y;
+                            } else if (direction.z !== 0) {
+                                actualMoveAmount = moveAmount * direction.z * -1; // FLIP Z AXIS MOVEMENT
+                            }
+
+                            moveModel(selectedForTranslation, axis, actualMoveAmount);
+                            console.log(`Mobile tap moved model ${actualMoveAmount}mm along ${axis}-axis`);
+                            return; // Don't process as regular click
+                        }
+                    }
+                }
+
+                // Check for model selection if no arrow was clicked
+                // Use scene.children to get all objects, then filter for STL models
+                const allObjects = [];
+                scene.traverse(object => {
+                    // Look for STL mesh objects that have material (actual model geometry)
+                    if (object.isMesh && object.material && object.visible) {
+                        allObjects.push(object);
+                    }
+                });
+
+                console.log('Checking for intersection with', allObjects.length, 'scene objects');
+                const objectIntersects = raycaster.intersectObjects(allObjects, false);
+
+                if (objectIntersects.length > 0) {
+                    const clickedObject = objectIntersects[0].object;
+                    console.log('Mobile tap hit object:', clickedObject);
+
+                    // Traverse up the parent chain to find which attached model this belongs to
+                    let currentObject = clickedObject;
+                    while (currentObject) {
+                        // Check if this object or any of its parents is an attached model
+                        for (const [point, model] of attachedModels) {
+                            if (model === currentObject ||
+                                model.children.includes(currentObject) ||
+                                isDescendantOf(clickedObject, model)) {
+                                selectedForTranslation = model;
+                                createTranslationArrows(model);
+                                console.log('Mobile tap selected model for translation:', model.userData.attachmentType);
+                                return;
+                            }
+                        }
+                        currentObject = currentObject.parent;
+                    }
+                    console.log('Clicked object is not part of any attached model');
+                } else {
+                    console.log('Mobile tap hit no objects - clearing selection');
+                }
+
+                // Check if user clicked an attachment point - if so, exit move mode
+                const pointIntersects = raycaster.intersectObjects(attachmentPoints, true);
+                if (pointIntersects.length > 0) {
+                    console.log('Mobile: Clicked attachment point in move mode - exiting move mode');
+                    toggleTranslationMode(); // Exit move mode
+                    return;
+                }
+
+                // If we get here, clear selection
+                selectedForTranslation = null;
+                clearTranslationArrows();
+                return; // Don't process as regular click in translation mode
+            }
+
+            // Only call regular click handler if NOT in translation mode
+            if (!isTranslationMode) {
+                // Handle double tap detection for model removal
+                const currentTime = Date.now();
+
+                if (currentTime - lastTapTime < DOUBLE_TAP_DELAY) {
+                    tapCount++;
+                    if (tapCount === 2) {
+                        // Double tap detected - call double click handler
+                        console.log('Mobile double tap detected');
+                        const syntheticEvent = {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            target: renderer.domElement,
+                            preventDefault: () => {},
+                            stopPropagation: () => {}
+                        };
+                        onDoubleClick(syntheticEvent);
+                        tapCount = 0;
+                        return;
+                    }
+                } else {
+                    tapCount = 1;
+                }
+                lastTapTime = currentTime;
+
+                // Single tap - create a synthetic event for the click handler
+                setTimeout(() => {
+                    if (tapCount === 1) {
+                        // Only process single tap if no second tap came
+                        const syntheticEvent = {
+                            clientX: touch.clientX,
+                            clientY: touch.clientY,
+                            target: renderer.domElement,
+                            preventDefault: () => {},
+                            stopPropagation: () => {}
+                        };
+                        onMouseClick(syntheticEvent);
+                        tapCount = 0;
+                    }
+                }, DOUBLE_TAP_DELAY);
+            }
+        }
+    }
+}
+
 // Mouse click handler - handles selection and attachment
 async function onMouseClick(event) {
     const menuElement = document.getElementById('modelSelect');
@@ -148,38 +369,73 @@ async function onMouseClick(event) {
             }
             
             if (arrow.userData?.type === 'translationArrow' && selectedForTranslation) {
-                // Move the model based on the arrow clicked
+                // Move the model based on the arrow direction
                 const moveAmount = 1; // 1mm increment
-                moveModel(selectedForTranslation, arrow.userData.axis, moveAmount);
+                const direction = arrow.userData.direction;
+                const axis = arrow.userData.axis;
+
+                // Calculate movement based on the arrow's direction vector
+                let actualMoveAmount = moveAmount;
+                // Use the actual direction vector components, not the stored axis
+                if (direction.x !== 0) {
+                    actualMoveAmount = moveAmount * direction.x;
+                } else if (direction.y !== 0) {
+                    actualMoveAmount = moveAmount * direction.y;
+                } else if (direction.z !== 0) {
+                    actualMoveAmount = moveAmount * direction.z * -1; // FLIP Z AXIS MOVEMENT
+                }
+
+                moveModel(selectedForTranslation, axis, actualMoveAmount);
                 return;
             }
         }
         
-        // Check if clicking on an attached model to select it for translation
-        const attachedModelArray = Array.from(attachedModels.values());
-        const modelIntersects = raycaster.intersectObjects(attachedModelArray, true);
-        
-        if (modelIntersects.length > 0) {
-            const clickedModel = modelIntersects[0].object;
-            let parentModel = clickedModel;
-            
-            // Find the root model
-            while (parentModel.parent && !attachedModels.has(parentModel)) {
-                parentModel = parentModel.parent;
+        // Check for model selection - use the same improved logic as mobile
+        const allObjects = [];
+        scene.traverse(object => {
+            // Look for STL mesh objects that have material (actual model geometry)
+            if (object.isMesh && object.material && object.visible) {
+                allObjects.push(object);
             }
-            
-            // Find the model in our attachedModels map
-            for (const [point, model] of attachedModels) {
-                if (model === parentModel || model.children.includes(clickedModel)) {
-                    selectedForTranslation = model;
-                    createTranslationArrows(model);
-                    console.log('Selected model for translation:', model.userData.attachmentType);
-                    return;
+        });
+
+        console.log('Desktop: Checking for intersection with', allObjects.length, 'scene objects');
+        const objectIntersects = raycaster.intersectObjects(allObjects, false);
+
+        if (objectIntersects.length > 0) {
+            const clickedObject = objectIntersects[0].object;
+            console.log('Desktop click hit object:', clickedObject);
+
+            // Traverse up the parent chain to find which attached model this belongs to
+            let currentObject = clickedObject;
+            while (currentObject) {
+                // Check if this object or any of its parents is an attached model
+                for (const [point, model] of attachedModels) {
+                    if (model === currentObject ||
+                        model.children.includes(currentObject) ||
+                        isDescendantOf(clickedObject, model)) {
+                        selectedForTranslation = model;
+                        createTranslationArrows(model);
+                        console.log('Desktop click selected model for translation:', model.userData.attachmentType);
+                        return;
+                    }
                 }
+                currentObject = currentObject.parent;
             }
+            console.log('Desktop: Clicked object is not part of any attached model');
+        } else {
+            console.log('Desktop: Click hit no objects - clearing selection');
         }
-        
-        // If clicking elsewhere, clear selection
+
+        // Check if user clicked an attachment point - if so, exit move mode
+        const pointIntersects = raycaster.intersectObjects(attachmentPoints, true);
+        if (pointIntersects.length > 0) {
+            console.log('Desktop: Clicked attachment point in move mode - exiting move mode');
+            toggleTranslationMode(); // Exit move mode
+            return;
+        }
+
+        // If we get here, clear selection
         selectedForTranslation = null;
         clearTranslationArrows();
         return;
@@ -457,7 +713,12 @@ function setupEventListeners() {
     window.addEventListener('mousemove', onMouseMove, false);
     window.addEventListener('click', onMouseClick, false);
     window.addEventListener('dblclick', onDoubleClick, false);
-    
+
+    // Touch events for mobile support
+    renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+    renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
+    renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: false });
+
     // Window events
     window.addEventListener('resize', onWindowResize, false);
     
@@ -474,6 +735,14 @@ function removeEventListeners() {
     window.removeEventListener('mousemove', onMouseMove, false);
     window.removeEventListener('click', onMouseClick, false);
     window.removeEventListener('dblclick', onDoubleClick, false);
+
+    // Remove touch events
+    if (renderer && renderer.domElement) {
+        renderer.domElement.removeEventListener('touchstart', onTouchStart, { passive: false });
+        renderer.domElement.removeEventListener('touchmove', onTouchMove, { passive: false });
+        renderer.domElement.removeEventListener('touchend', onTouchEnd, { passive: false });
+    }
+
     window.removeEventListener('resize', onWindowResize, false);
     window.removeEventListener('keydown', onKeyDown, false);
 }

@@ -30,6 +30,9 @@
             display: flex;
             background-color: #6887c2;
             border-bottom: 1px solid #586ba8;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
         }
         
         .tab {
@@ -37,6 +40,8 @@
             cursor: pointer;
             transition: background-color 0.3s;
             font-weight: 600;
+            flex-shrink: 0;
+            min-width: fit-content;
         }
         
         .tab:hover {
@@ -109,6 +114,40 @@
             color: #c7c7c7;
             padding-left: 60px; /* Make room for the button */
         }
+
+        /* Mobile responsiveness for tab scrolling */
+        @media screen and (max-width: 768px) {
+            .tab-container {
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+                scrollbar-width: none; /* Hide scrollbar on Firefox */
+                -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
+            }
+
+            .tab-container::-webkit-scrollbar {
+                display: none; /* Hide scrollbar on WebKit browsers */
+            }
+
+            .tab {
+                padding: 12px 16px;
+                font-size: 14px;
+                min-width: 80px;
+                text-align: center;
+            }
+
+            .header-with-button {
+                padding-left: 20px;
+                padding-right: 20px;
+                font-size: 1.5rem;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .tab {
+                padding: 10px 12px;
+                font-size: 13px;
+                min-width: 70px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -119,7 +158,9 @@
         <h1 class="header-with-button">Hero Me Builder Changelog</h1>
         <!--BELOW: Define Tabs-->
         <div class="tab-container">
-            <div class="tab active" onclick="openTab(event, 'v018')">v0.1.8</div>
+            <div class="tab active" onclick="openTab(event, 'v020')">v0.2.0</div>
+            <div class="tab" onclick="openTab(event, 'v019')">v0.1.9</div>
+            <div class="tab" onclick="openTab(event, 'v018')">v0.1.8</div>
             <div class="tab" onclick="openTab(event, 'v017')">v0.1.7</div>
             <div class="tab" onclick="openTab(event, 'v016')">v0.1.6</div>
             <div class="tab" onclick="openTab(event, 'v015')">v0.1.5</div>
@@ -129,7 +170,34 @@
             <div class="tab" onclick="openTab(event, 'v011')">v0.1.1</div>
         </div>
         <!--BELOW: Define Each Tabs Contents-->
-        <div id="v018" class="tab-content active">
+        <div id="v020" class="tab-content active">
+            <h2>Version 0.2.0 BETA - October 4 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Mobile-friendly interface with collapsible bottom menu for tools and options</li>
+                <li><span class="category">Added:</span> Mobile part selection menus now appear at top of screen instead of following attachment points</li>
+                <li><span class="category">Added:</span> Mobile move tool with tap-based controls - tap to select parts, tap arrows to move in 1mm increments</li>
+                <li><span class="category">Added:</span> Double-tap to remove parts functionality on mobile devices</li>
+                <li><span class="category">Added:</span> Larger, touch-friendly arrows on mobile for easier interaction with move tool and part adjustments</li>
+                <li><span class="category">Improved:</span> Move tool now gracefully exits when clicking attachment points instead of showing errors</li>
+                <li><span class="category">Improved:</span> Bidirectional move arrows - can now move parts in both positive and negative directions on all axes</li>
+            </ul>
+        </div>
+
+        <div id="v019" class="tab-content">
+            <h2>Version 0.1.9 BETA - October 3 2025</h2>
+            <ul>
+                <li><span class="category">Refactored:</span> Complete codebase restructure - separated monolithic app.js into modular components (models.js, scene.js, events.js, ui.js, state.js, filesystem.js, etc.)</li>
+                <li><span class="category">Fixed:</span> Direct drive mount alignment inconsistency - all direct drives now mount with consistent orientation regardless of parent type</li>
+                <li><span class="category">Fixed:</span> Enhanced alignment system to properly handle coordinate transformations without inheriting parent rotations</li>
+                <li><span class="category">Fixed:</span> Memory leak issue where secondary attachments weren't properly cleaned up when removing models</li>
+                <li><span class="category">Fixed:</span> Attachment type classification bug where direct drives were misidentified as spacers based on filename filtering</li>
+                <li><span class="category">Improved:</span> Enhanced alignment logic now correctly translates JSON coordinate systems to global builder coordinates</li>
+                <li><span class="category">Added:</span> Custom folder support with yellow star icons for easy identification</li>
+                <li><span class="category">Improved:</span> Move tool icon changed from wrench to directional arrows for better user understanding</li>
+            </ul>
+        </div>
+
+        <div id="v018" class="tab-content">
             <h2>Version 0.1.8 BETA - September 1 2025</h2>
             <ul>
                 <li><span class="category">Fixed:</span> Major direct drive mount alignment fix using position-based face detection to correctly orient front faces toward camera</li>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Me Builder</title>
     <style>
         body {
@@ -386,9 +387,326 @@
         .close-contributors:hover {
             background-color: #e74c3c;
         }
+
+        /* Mobile Bottom Menu */
+        .mobile-bottom-menu {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            transform: translateY(calc(100% - 60px));
+            transition: transform 0.3s ease;
+            z-index: 3000;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .mobile-bottom-menu.open {
+            transform: translateY(0);
+        }
+
+        .mobile-menu-handle {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #34495e;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+
+        .mobile-menu-handle::before {
+            content: '';
+            width: 40px;
+            height: 4px;
+            background: #7f8c8d;
+            border-radius: 2px;
+            margin-right: 10px;
+        }
+
+        .mobile-menu-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .mobile-bottom-menu.open .mobile-menu-content {
+            display: block;
+        }
+
+        .mobile-menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .mobile-menu-button {
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            text-align: center;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mobile-menu-button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Mobile Responsiveness */
+        @media screen and (orientation: portrait), screen and (max-width: 1023px) {
+            .main-menu-header {
+                margin-bottom: 2rem;
+                max-width: 320px;
+                width: 90%;
+            }
+
+            .menu-buttons {
+                gap: 0.8rem;
+                margin-bottom: 1rem;
+            }
+
+            .menu-button {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+                min-width: 280px;
+            }
+
+            /* Hide desktop elements on mobile */
+            .disclaimer-box,
+            .contributors-overlay,
+            .contributors-button,
+            .utility-buttons {
+                display: none !important;
+            }
+
+            /* Hide secondary buttons from main menu on mobile */
+            .menu-buttons .menu-button:not(:first-child) {
+                display: none !important;
+            }
+
+            /* Show mobile bottom menu */
+            .mobile-bottom-menu {
+                display: block;
+            }
+
+            #aboutSection {
+                width: 90%;
+                padding: 1.5rem;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+
+            .contributors-overlay {
+                padding: 1rem;
+            }
+
+            .contributors-content {
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+
+            .contributor-card {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .contributor-name {
+                font-size: 1.1rem;
+            }
+
+            .contributor-role {
+                font-size: 0.9rem;
+            }
+
+            /* Mobile contributors menu styling */
+            .contributors-menu {
+                width: 90vw !important;
+                left: 5vw !important;
+                height: 60vh !important;
+                max-height: 60vh !important;
+            }
+
+            .contributors-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px 20px !important;
+            }
+
+            .contributors-list {
+                max-height: calc(60vh - 80px);
+                overflow-y: auto;
+            }
+        }
+
+        /* Mobile builder controls menu - base styles */
+        .mobile-builder-menu {
+            display: none; /* Hidden by default */
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        /* Show on mobile devices and hide desktop controls */
+        @media screen and (orientation: portrait), screen and (max-width: 1023px) {
+            .mobile-builder-menu {
+                display: block !important;
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                z-index: 9999 !important;
+            }
+
+            /* Hide desktop controls on mobile */
+            #wrenchButton,
+            button[onclick*="downloadSceneAsZip"]:not(#mobileDownloadButton),
+            .home-icon-button {
+                display: none !important;
+            }
+        }
+
+        /* Hide on desktop */
+        @media screen and (orientation: landscape) and (min-width: 1024px) {
+            .mobile-builder-menu {
+                display: none !important;
+            }
+        }
+
+        .mobile-builder-menu.show {
+            transform: translateY(0);
+        }
+
+        .mobile-builder-handle {
+            background: #34495e;
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            border-top: 3px solid #52c41a;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.2s ease;
+        }
+
+        .mobile-builder-handle:hover {
+            background: #3d566e;
+        }
+
+        .mobile-builder-controls {
+            padding: 15px;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: visible;
+        }
+
+        .mobile-builder-row {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .mobile-builder-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .mobile-builder-button {
+            flex: 1;
+            padding: 12px;
+            background: #52c41a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+            transition: background-color 0.2s ease;
+        }
+
+        .mobile-builder-button:hover {
+            background: #45a049;
+        }
+
+        .mobile-builder-button.move-active {
+            background: #e67e22;
+        }
+
+        .mobile-builder-button-full {
+            width: 100%;
+        }
+
+        @media screen and (max-width: 480px) {
+            .menu-button {
+                padding: 0.7rem 1rem;
+                font-size: 0.95rem;
+                min-width: 250px;
+            }
+
+            .main-menu-header {
+                max-width: 280px;
+            }
+
+            #aboutSection {
+                padding: 1rem;
+            }
+
+            .disclaimer-box {
+                padding: 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Ensure mobile builder buttons are properly sized for small screens */
+            .mobile-builder-controls {
+                padding: 10px;
+                gap: 5px;
+            }
+
+            .mobile-builder-button {
+                font-size: 12px;
+                padding: 10px 8px;
+                min-width: 0;
+                flex-shrink: 1;
+            }
+
+            .mobile-builder-button span {
+                font-size: 11px;
+            }
+        }
     </style>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="fonts/fontawesome/css/all.min.css">
 </head>
 
 <body>
@@ -398,7 +716,7 @@
         </div>
         <div class="menu-buttons">
             <button class="menu-button" onclick="startBuilder()">Start Builder</button>
-            <button class="menu-button" onclick="showAbout()">About</button>
+            <button class="menu-button" onclick="showAbout()">How to use</button>
             <a href="changelog.html" class="menu-button">Changelogs</a>
         </div>
     </div>
@@ -452,11 +770,39 @@
     <button class="contributors-button" onclick="toggleContributors()">Contributors</button>
     
     <div id="contributorsMenu" class="contributors-menu">
-        <div class="contributors-header">Contributors</div>
+        <div class="contributors-header">
+            <span>Contributors</span>
+            <button onclick="toggleContributors()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 5px;"><i class="fas fa-times"></i></button>
+        </div>
         <div class="contributors-list">
             <div class="contributor-item">TheSlumberingOne</div>
             <div class="contributor-item">THE_LAST_JAGUAR</div>
             <div class="contributor-item">BSense</div>
+        </div>
+    </div>
+
+    <!-- Mobile Builder Controls Menu (hidden initially) -->
+    <div id="mobileBuilderMenu" class="mobile-builder-menu">
+        <div class="mobile-builder-handle" onclick="toggleMobileBuilderMenu()">
+            <span><i class="fas fa-chevron-up"></i> Builder Controls <i class="fas fa-chevron-up"></i></span>
+        </div>
+        <div class="mobile-builder-controls">
+            <div class="mobile-builder-row">
+                <button id="mobileHomeButton" class="mobile-builder-button" onclick="goHome()">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </button>
+                <button id="mobileMoveButton" class="mobile-builder-button" onclick="toggleMobileMoveMode()">
+                    <i class="fas fa-arrows-alt"></i>
+                    <span>Move</span>
+                </button>
+            </div>
+            <div class="mobile-builder-row">
+                <button id="mobileDownloadButton" class="mobile-builder-button mobile-builder-button-full" onclick="downloadSceneAsZip()">
+                    <i class="fas fa-download"></i>
+                    <span>Download</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -488,7 +834,10 @@
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('loadingScreen').style.display = 'flex';
             document.querySelector('.disclaimer-box').style.display = 'none';
-            
+
+            // Hide main menu mobile pull-up when builder loads
+            document.getElementById('mobileBottomMenu').style.display = 'none';
+
             // Hide utility buttons when builder loads
             document.querySelector('.utility-buttons').style.display = 'none';
             document.querySelector('.contributors-button').style.display = 'none';
@@ -497,7 +846,15 @@
             
             // Show home button in builder
             document.querySelector('.home-icon-button').style.display = 'flex';
-            
+
+            // Show mobile builder menu on mobile (same detection as main menu) - but keep it collapsed initially
+            const mobileBuilderMenu = document.getElementById('mobileBuilderMenu');
+            if (mobileBuilderMenu) {
+                mobileBuilderMenu.style.display = 'block';
+                // Keep it collapsed by default - user can tap to open
+                mobileBuilderMenu.style.transform = 'translateY(calc(100% - 60px))';
+            }
+
             if (!appScriptLoaded) {
                 appScriptLoaded = true;
                 // Initialize the Hero Me Builder application
@@ -560,6 +917,75 @@
 
         // Load coverage stats when page loads
         document.addEventListener('DOMContentLoaded', loadJsonCoverage);
+
+        // Mobile bottom menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileBottomMenu');
+            menu.classList.toggle('open');
+        }
+
+        // Mobile builder menu toggle
+        function toggleMobileBuilderMenu() {
+            const menu = document.getElementById('mobileBuilderMenu');
+            const handle = menu.querySelector('.mobile-builder-handle span');
+
+            if (menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                menu.style.transform = 'translateY(calc(100% - 60px))';
+                handle.innerHTML = '<i class="fas fa-chevron-up"></i> Builder Controls <i class="fas fa-chevron-up"></i>';
+            } else {
+                menu.classList.add('show');
+                menu.style.transform = 'translateY(0)';
+                handle.innerHTML = '<i class="fas fa-chevron-down"></i> Close Controls <i class="fas fa-chevron-down"></i>';
+            }
+        }
+
+        // Mobile move mode toggle
+        function toggleMobileMoveMode() {
+            if (typeof toggleTranslationMode === 'function') {
+                toggleTranslationMode();
+                updateMobileMoveButton();
+            }
+        }
+
+        // Update mobile move button appearance
+        function updateMobileMoveButton() {
+            const button = document.getElementById('mobileMoveButton');
+            if (button && typeof isTranslationMode !== 'undefined') {
+                if (isTranslationMode) {
+                    button.classList.add('move-active');
+                    button.querySelector('span').textContent = 'Exit Move';
+                } else {
+                    button.classList.remove('move-active');
+                    button.querySelector('span').textContent = 'Move';
+                }
+            }
+        }
     </script>
+
+    <!-- Mobile Bottom Menu -->
+    <div id="mobileBottomMenu" class="mobile-bottom-menu">
+        <div class="mobile-menu-handle" onclick="toggleMobileMenu()">
+            <span>More Options</span>
+        </div>
+        <div class="mobile-menu-content">
+            <div class="mobile-menu-buttons">
+                <a href="https://heromebuilder.site/changelog.html" class="mobile-menu-button">Changelog</a>
+                <button class="mobile-menu-button" onclick="showAbout(); toggleMobileMenu();">How to use</button>
+                <button class="mobile-menu-button" onclick="toggleContributors(); toggleMobileMenu();">Contributors</button>
+            </div>
+
+            <div style="background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">Hero Me Community</p>
+                <a href="https://discord.gg/BZVaTDMVj6" class="mobile-menu-button" style="background: #7289da; margin: 0;">Join Discord</a>
+            </div>
+
+            <div style="background: #34495e; padding: 15px; border-radius: 8px;">
+                <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">Bug Tracker</p>
+                <a href="https://heromebuilder.site/tracker" class="mobile-menu-button" style="background: #e67e22; margin: 0;">Tracker</a>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

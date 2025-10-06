@@ -70,6 +70,11 @@ function createDownloadButton() {
     document.body.appendChild(downloadButton);
 }
 
+// Check if device is mobile for larger arrow sizes
+function isMobileDevice() {
+    return window.innerWidth <= 1023 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // Toggle translation mode on/off
 function toggleTranslationMode() {
     isTranslationMode = !isTranslationMode;
@@ -115,18 +120,21 @@ function createTranslationArrows(model) {
     const bbox = new THREE.Box3().setFromObject(model);
     const center = bbox.getCenter(new THREE.Vector3());
     
-    // Create arrows
-    const arrowLength = 30;
-    const arrowRadius = 2;
-    const arrowHeadLength = 10;
-    const arrowHeadRadius = 5;
-    const offset = 40; // 40mm from center
+    // Create arrows - bigger on mobile for easier touch
+    const mobile = isMobileDevice();
+    const arrowLength = mobile ? 40 : 30;
+    const arrowRadius = mobile ? 3 : 2;
+    const arrowHeadLength = mobile ? 15 : 10;
+    const arrowHeadRadius = mobile ? 7 : 5;
+    const offset = mobile ? 50 : 40; // Distance from center
     
     // Check if this is a probe mount
     const isProbeMount = model.userData.attachmentType === 'probe';
-    
-    // X axis arrow (red) - left/right (same for all types)
-    const xArrow = createArrow(
+
+    // Create pairs of arrows for each axis (positive and negative directions)
+
+    // X axis arrows (red) - left/right
+    const xArrowPos = createArrow(
         new THREE.Vector3(center.x + offset, center.y, center.z),
         new THREE.Vector3(1, 0, 0),
         0xff0000,
@@ -136,9 +144,20 @@ function createTranslationArrows(model) {
         arrowHeadLength,
         arrowHeadRadius
     );
-    
-    // Y axis arrow (green) - different for probe mounts
-    const yArrow = createArrow(
+
+    const xArrowNeg = createArrow(
+        new THREE.Vector3(center.x - offset, center.y, center.z),
+        new THREE.Vector3(-1, 0, 0),
+        0xcc0000, // Slightly darker red for negative direction
+        'x',
+        arrowLength,
+        arrowRadius,
+        arrowHeadLength,
+        arrowHeadRadius
+    );
+
+    // Y axis arrows (green) - up/down
+    const yArrowPos = createArrow(
         new THREE.Vector3(center.x, center.y + offset, center.z),
         new THREE.Vector3(0, 1, 0),
         0x00ff00,
@@ -148,9 +167,20 @@ function createTranslationArrows(model) {
         arrowHeadLength,
         arrowHeadRadius
     );
-    
-    // Z axis arrow (blue) - different for probe mounts
-    const zArrow = createArrow(
+
+    const yArrowNeg = createArrow(
+        new THREE.Vector3(center.x, center.y - offset, center.z),
+        new THREE.Vector3(0, -1, 0),
+        0x00cc00, // Slightly darker green for negative direction
+        isProbeMount ? 'y' : 'z',
+        arrowLength,
+        arrowRadius,
+        arrowHeadLength,
+        arrowHeadRadius
+    );
+
+    // Z axis arrows (blue) - forward/back
+    const zArrowPos = createArrow(
         new THREE.Vector3(center.x, center.y, center.z + offset),
         new THREE.Vector3(0, 0, 1),
         0x0000ff,
@@ -160,8 +190,19 @@ function createTranslationArrows(model) {
         arrowHeadLength,
         arrowHeadRadius
     );
-    
-    translationArrows = [xArrow, yArrow, zArrow];
+
+    const zArrowNeg = createArrow(
+        new THREE.Vector3(center.x, center.y, center.z - offset),
+        new THREE.Vector3(0, 0, -1),
+        0x0000cc, // Slightly darker blue for negative direction
+        isProbeMount ? 'z' : 'y',
+        arrowLength,
+        arrowRadius,
+        arrowHeadLength,
+        arrowHeadRadius
+    );
+
+    translationArrows = [xArrowPos, xArrowNeg, yArrowPos, yArrowNeg, zArrowPos, zArrowNeg];
     translationArrows.forEach(arrow => {
         scene.add(arrow);
     });
@@ -173,11 +214,11 @@ function createTranslationArrows(model) {
 function createArrow(position, direction, color, axis, length, radius, headLength, headRadius) {
     // Create arrow group
     const arrowGroup = new THREE.Group();
-    
+
     // Create arrow shaft geometry
     const shaftGeometry = new THREE.CylinderGeometry(radius, radius, length, 12);
     shaftGeometry.translate(0, length/2, 0);
-    
+
     // Create arrow head geometry
     const headGeometry = new THREE.ConeGeometry(headRadius, headLength, 12);
     headGeometry.translate(0, length + headLength/2, 0);
@@ -206,9 +247,19 @@ function createArrow(position, direction, color, axis, length, radius, headLengt
     if (direction.x !== 0) {
         arrowGroup.rotateZ(-Math.PI / 2 * Math.sign(direction.x));
     } else if (direction.z !== 0) {
-        arrowGroup.rotateX(Math.PI / 2 * Math.sign(direction.z));
+        // Z direction: positive Z should point away from camera, negative Z toward camera
+        if (direction.z > 0) {
+            arrowGroup.rotateX(Math.PI / 2); // Point forward (away from camera)
+        } else {
+            arrowGroup.rotateX(-Math.PI / 2); // Point backward (toward camera)
+        }
+    } else if (direction.y !== 0) {
+        // Y direction: positive Y is default up, negative Y needs 180 degree rotation
+        if (direction.y < 0) {
+            arrowGroup.rotateZ(Math.PI); // Flip 180 degrees to point down
+        }
+        // Positive Y needs no rotation (default up)
     }
-    // Y direction needs no rotation (default up)
     
     // Store metadata
     arrowGroup.userData = {
@@ -256,7 +307,12 @@ function moveModel(model, axis, amount) {
 
 // Create position arrows for adjustable parts (part cooling, probe mounts)
 function createPositionArrows(attachedModel) {
-    const arrowGeometry = new THREE.CylinderGeometry(2, 0, 8, 16);
+    // Make arrows bigger on mobile for easier touch
+    const mobile = isMobileDevice();
+    const arrowRadius = mobile ? 3 : 2;
+    const arrowHeight = mobile ? 12 : 8;
+
+    const arrowGeometry = new THREE.CylinderGeometry(arrowRadius, 0, arrowHeight, 16);
     const arrowMaterial = new THREE.MeshPhongMaterial({
         color: 0x03fcec,
         transparent: false,
@@ -275,9 +331,10 @@ function createPositionArrows(attachedModel) {
         upArrow.rotation.x = -Math.PI / 2;  // Points up
         downArrow.rotation.x = Math.PI / 2; // Points down
 
-        // Position arrows above and below the probe mount - relative positioning like live_app.js
-        upArrow.position.set(0, 0, 25);
-        downArrow.position.set(0, 0, -25);
+        // Position arrows above and below the probe mount - wider spacing on mobile
+        const spacing = mobile ? 35 : 25;
+        upArrow.position.set(0, 0, spacing);
+        downArrow.position.set(0, 0, -spacing);
     } else {
         // Part cooling arrows should point up and down (vertical) - EXACT copy from live_app.js
         upArrow.rotation.x = -Math.PI / 2;  // Points up
@@ -297,9 +354,10 @@ function createPositionArrows(attachedModel) {
         upArrow.position.z -= 20;      // Move down
         downArrow.position.z -= 20;    // Move down
 
-        // Then add the up/down spread
-        upArrow.position.z += 35;      // Spread up from base position
-        downArrow.position.z -= 35;    // Spread down from base position
+        // Then add the up/down spread - wider spacing on mobile
+        const spread = mobile ? 45 : 35;
+        upArrow.position.z += spread;      // Spread up from base position
+        downArrow.position.z -= spread;    // Spread down from base position
     }
 
     // Store original positions (like live_app.js)

@@ -7,6 +7,7 @@ let scene, camera, renderer, mainModel, controls;
 // Selection and interaction state
 let selectedPoint = null;
 let attachmentPoints = [];
+let secondaryAttachmentPoints = [];
 let attachedModels = new Map(); // Map to track which points have models attached
 
 // Part movement state
@@ -229,6 +230,7 @@ window.mainModel = mainModel;
 window.controls = controls;
 window.selectedPoint = selectedPoint;
 window.attachmentPoints = attachmentPoints;
+window.secondaryAttachmentPoints = secondaryAttachmentPoints;
 window.attachedModels = attachedModels;
 window.isMovingPart = isMovingPart;
 window.isMouseDown = isMouseDown;
