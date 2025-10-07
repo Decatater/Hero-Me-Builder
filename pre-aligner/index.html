@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>STL Pre-Aligner</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../fonts/fontawesome/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar - Model Management -->
+        <div class="left-sidebar">
+            <h2>Models</h2>
+            <div class="controls">
+                <button id="addModel" class="button">
+                    <i class="fas fa-plus"></i> Add STL
+                </button>
+                <input type="file" id="fileInput" accept=".stl" multiple style="display: none;">
+                <button id="loadAssembly" class="button">
+                    <i class="fas fa-folder-open"></i> Load Assembly
+                </button>
+                <input type="file" id="assemblyInput" accept=".json" style="display: none;">
+            </div>
+            <div id="modelList" class="model-list"></div>
+
+            <div class="transform-controls">
+                <h3>Transform Mode</h3>
+                <div class="button-group">
+                    <button id="translateMode" class="button active">
+                        <i class="fas fa-arrows-alt"></i> Translate
+                    </button>
+                    <button id="rotateMode" class="button">
+                        <i class="fas fa-sync-alt"></i> Rotate
+                    </button>
+                </div>
+                <label>
+                    <input type="checkbox" id="snapToGrid"> Snap to Grid (1mm)
+                </label>
+                <label>
+                    <input type="checkbox" id="snapAngle"> Snap Angle (15°)
+                </label>
+            </div>
+        </div>
+
+        <!-- Center - 3D Viewer -->
+        <div id="viewer">
+            <div id="viewerHud" class="viewer-hud">
+                <div id="hoverInfo"></div>
+            </div>
+            <a href="https://heromebuilder.site" class="home-button">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </div>
+
+        <!-- Right Sidebar - Circle/Hole Detection -->
+        <div class="right-sidebar">
+            <h2>Tools</h2>
+            <div class="controls">
+                <button id="selectOrientationFace" class="button">
+                    <i class="fas fa-compass"></i> Select Orientation Face
+                </button>
+                <button id="alignFaceMode" class="button">
+                    <i class="fas fa-level-up-alt"></i> Align Face to Plane
+                </button>
+                <button id="detectCirclesMode" class="button">
+                    <i class="fas fa-bullseye"></i> Detect Circles
+                </button>
+            </div>
+
+            <div class="export-section">
+                <h3>Export Assembly</h3>
+                <label>
+                    <span>Assembly Name:</span>
+                    <input type="text" id="assemblyName" placeholder="my-assembly" value="">
+                </label>
+                <label>
+                    <span>Author:</span>
+                    <input type="text" id="authorName" placeholder="Your Name">
+                </label>
+                <label>
+                    <span>Download Link:</span>
+                    <input type="text" id="downloadLink" placeholder="https://...">
+                </label>
+                <button id="exportAssembly" class="button">
+                    <i class="fas fa-download"></i> Export as ZIP
+                </button>
+            </div>
+
+            <div class="controls" style="margin-top: 15px;">
+                <button id="resetView" class="button">
+                    <i class="fas fa-eye"></i> Reset View
+                </button>
+                <button id="clearAll" class="button danger">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+            </div>
+            <div id="status" class="status-panel"></div>
+            <div id="orientationInfo" class="info-panel"></div>
+            <div id="detectedCircles" class="circles-panel"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script src="modules/ModelManager.js"></script>
+    <script src="modules/TransformControl.js"></script>
+    <script src="modules/FaceDetector.js"></script>
+    <script src="modules/CircleDetector.js"></script>
+    <script src="modules/ExportManager.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

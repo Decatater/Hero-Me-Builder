@@ -222,15 +222,15 @@
             bottom: 80px; /* Position above the contributors button (50px height + 20px bottom + 10px gap) */
             left: 20px;
             width: 200px;
-            height: 40px;
             display: flex;
+            flex-direction: column;
             gap: 5px;
             z-index: 2998;
         }
 
         .utility-button {
-            flex: 1;
-            height: 100%;
+            width: 100%;
+            height: 40px;
             border: none;
             border-radius: 20px;
             cursor: pointer;
@@ -243,6 +243,15 @@
             justify-content: center;
             transition: all 0.3s ease;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .pre-aligner-button {
+            background-color: #9c27b0;
+        }
+
+        .pre-aligner-button:hover {
+            background-color: #ba68c8;
+            transform: translateY(-1px);
         }
 
         .marker-button {
@@ -757,8 +766,9 @@
 
     <!-- Utility Buttons -->
     <div class="utility-buttons">
+        <a href="https://heromebuilder.site/pre-aligner" class="utility-button pre-aligner-button">Pre-Aligner</a>
         <a href="https://heromebuilder.site/marker" class="utility-button marker-button">Marker</a>
-        <a href="https://heromebuilder.site/tracker" class="utility-button tracker-button">Tracker</a>
+        <a href="https://heromebuilder.site/tracker" class="utility-button tracker-button">Issue Tracker</a>
     </div>
 
     <!-- Home Button for Builder (hidden initially) -->
@@ -822,6 +832,7 @@
     <script src="js/wings-and-probes.js"></script>
     <script src="js/gantry-systems.js"></script>
     <script src="js/hotends-and-drives.js"></script>
+    <script src="js/assemblies.js"></script>
     <script src="js/models.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/events.js"></script>

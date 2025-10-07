@@ -2394,7 +2394,15 @@ function exportCircleData() {
     const faceGroups = groupHolesByFace(detectedCircles);
     const slideFaceGroups = groupSlideFaces(slideFaces);
     
+    // Get author and link from input fields
+    const author = document.getElementById('authorName').value.trim();
+    const downloadLink = document.getElementById('downloadLink').value.trim();
+
     const data = {
+        credits: {
+            author: author || '',
+            downloadLink: downloadLink || ''
+        },
         faces: faceGroups.map((group, faceIndex) => {
             const faceNormal = group[0]?.normal || {x: 0, y: 0, z: 0};
             return {

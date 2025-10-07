@@ -1,4 +1,8 @@
 {
+  "credits": {
+    "author": "Dekatater",
+    "downloadLink": "https://discord.com/channels/1186767976117043200/1277424792999297097"
+  },
   "faces": [
     {
       "faceId": 1,
@@ -10,7 +14,7 @@
       "holes": [
         {
           "id": 1,
-          "diameter": 7.59,
+          "diameter": 7.6,
           "position": {
             "x": 13.5,
             "y": 6.81,
@@ -24,11 +28,11 @@
         },
         {
           "id": 2,
-          "diameter": 7.68,
+          "diameter": 7.59,
           "position": {
-            "x": -16.53,
+            "x": -16.5,
             "y": 6.81,
-            "z": 9.96
+            "z": 9.99
           },
           "rotation": {
             "x": -90,
@@ -41,7 +45,7 @@
         {
           "from": 1,
           "to": 2,
-          "distance": 30.04,
+          "distance": 30,
           "axis": "X"
         }
       ]
@@ -54,15 +58,15 @@
       "z": 0
     },
     "position": {
-      "x": 0,
-      "y": -8.19,
-      "z": -8.23
+      "x": 0.4,
+      "y": 0.81,
+      "z": 4.88
     },
     "dimensions": {
-      "width": 37.97199249267578,
-      "height": 19.497962951660156,
-      "centerX": 8.876684320869742,
-      "centerY": -0.38417902549156224
+      "width": 42.199989318847656,
+      "height": 24.604034423828125,
+      "centerX": 4.842516224451757,
+      "centerY": -9.307790036266127
     },
     "rotation": {
       "x": 90,
@@ -84,8 +88,8 @@
     "dimensions": {
       "width": 40,
       "height": 4.5,
-      "centerX": -0.6457525834359217,
-      "centerY": 0.16157353016228626
+      "centerX": -3.1384551164634615,
+      "centerY": 1.1316920618198196
     },
     "rotation": {
       "x": 0,
@@ -95,5 +99,5 @@
   },
   "slideFaces": [],
   "totalHoles": 2,
-  "timestamp": "2025-10-03T13:03:30.377Z"
+  "timestamp": "2025-10-07T03:48:47.098Z"
 }

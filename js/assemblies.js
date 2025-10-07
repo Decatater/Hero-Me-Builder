@@ -1,0 +1,273 @@
+// Assembly Module
+// Functions for loading and managing multi-part assemblies
+
+// Load and attach an assembly at the selected point
+async function attachAssemblyAtPoint(assemblyReference, attachPoint, baseGeometryData, partPath) {
+    console.log('Attaching assembly:', assemblyReference);
+
+    if (!assemblyReference.assemblyFile || !assemblyReference.modelId) {
+        console.error('Invalid assembly reference - missing assemblyFile or modelId');
+        return null;
+    }
+
+    try {
+        // Load the assembly definition (from same directory as the part)
+        const assemblyData = await loadAssemblyData(assemblyReference.assemblyFile, partPath);
+        if (!assemblyData) {
+            console.error('Failed to load assembly data');
+            return null;
+        }
+
+        console.log('Assembly data loaded:', assemblyData);
+
+        // Find the primary model in the assembly (the one referenced in the part JSON)
+        const primaryModel = assemblyData.models.find(m => m.id === assemblyReference.modelId);
+        if (!primaryModel) {
+            console.error('Primary model not found in assembly:', assemblyReference.modelId);
+            return null;
+        }
+
+        console.log('Primary model found:', primaryModel);
+
+        // Create a group to hold all assembly parts
+        const assemblyGroup = new THREE.Group();
+        assemblyGroup.userData.isAssembly = true;
+        assemblyGroup.userData.assemblyName = assemblyData.assemblyName;
+        assemblyGroup.userData.assemblyFile = assemblyReference.assemblyFile;
+        assemblyGroup.userData.attachmentType = attachPoint.userData.attachmentType;
+        assemblyGroup.userData.originalModelPath = partPath; // Store the original path for export
+
+        // Store individual meshes for reference
+        const assemblyMeshes = [];
+
+        // Helper function to generate random pastel colors
+        const getRandomPastelColor = () => {
+            const hue = Math.random() * 360;
+            const saturation = 40 + Math.random() * 20; // 40-60%
+            const lightness = 70 + Math.random() * 15;  // 70-85%
+
+            // Convert HSL to RGB
+            const h = hue / 60;
+            const c = (1 - Math.abs(2 * lightness / 100 - 1)) * saturation / 100;
+            const x = c * (1 - Math.abs(h % 2 - 1));
+            const m = lightness / 100 - c / 2;
+
+            let r, g, b;
+            if (h < 1) { r = c; g = x; b = 0; }
+            else if (h < 2) { r = x; g = c; b = 0; }
+            else if (h < 3) { r = 0; g = c; b = x; }
+            else if (h < 4) { r = 0; g = x; b = c; }
+            else if (h < 5) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+
+            r = Math.round((r + m) * 255);
+            g = Math.round((g + m) * 255);
+            b = Math.round((b + m) * 255);
+
+            return (r << 16) | (g << 8) | b;
+        };
+
+        // Get the directory from the part path
+        const directory = partPath.substring(0, partPath.lastIndexOf('/') + 1);
+
+        // Load all models in the assembly
+        for (const modelData of assemblyData.models) {
+            const stlPath = `${directory}${modelData.name}`;
+
+            console.log(`Loading assembly part: ${stlPath}`);
+
+            // Load the STL
+            const loader = new THREE.STLLoader();
+            const geometry = await new Promise((resolve, reject) => {
+                loader.load(
+                    stlPath,
+                    (geo) => resolve(geo),
+                    undefined,
+                    (error) => reject(error)
+                );
+            });
+
+            // Create material with random pastel color for each assembly part
+            const color = getRandomPastelColor();
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                flatShading: false,
+                transparent: true,
+                opacity: 1
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+
+            // Center the geometry
+            geometry.computeBoundingBox();
+            const center = geometry.boundingBox.getCenter(new THREE.Vector3());
+            geometry.translate(-center.x, -center.y, -center.z);
+
+            // Apply the transform from the assembly definition
+            mesh.position.set(
+                modelData.transform.position.x,
+                modelData.transform.position.y,
+                modelData.transform.position.z
+            );
+            mesh.rotation.set(
+                modelData.transform.rotation.x,
+                modelData.transform.rotation.y,
+                modelData.transform.rotation.z
+            );
+            mesh.scale.set(
+                modelData.transform.scale.x,
+                modelData.transform.scale.y,
+                modelData.transform.scale.z
+            );
+
+            // Store model metadata
+            mesh.userData.modelId = modelData.id;
+            mesh.userData.modelName = modelData.name;
+            mesh.userData.assemblyPart = true;
+
+            assemblyGroup.add(mesh);
+            assemblyMeshes.push(mesh);
+
+            console.log(`Added assembly part ${modelData.name} at position:`, mesh.position);
+        }
+
+        // Now align the entire assembly group using the assembly-level data
+        // Get the circles (mounting holes) from the assembly data
+        if (assemblyData.circles && assemblyData.circles.length > 0) {
+            console.log('Assembly has', assemblyData.circles.length, 'mounting circles');
+
+            // Use the circles to align the assembly to the base attachment point
+            alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData);
+        }
+
+        // Add the assembly group to the appropriate parent
+        const parentModel = attachPoint.userData.parentModel || mainModel;
+        parentModel.add(assemblyGroup);
+
+        // Hide the attachment point
+        attachPoint.visible = false;
+
+        // Track the assembly
+        attachedModels.set(attachPoint, assemblyGroup);
+
+        console.log('Assembly attached successfully');
+        return assemblyGroup;
+
+    } catch (error) {
+        console.error('Error attaching assembly:', error);
+        return null;
+    }
+}
+
+// Align assembly to base using mounting holes and orientation face
+function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData) {
+    console.log('Aligning assembly to base');
+
+    // Get base face (the face we're attaching to on the base model)
+    const baseFace = baseGeometryData.faces.find(face => face.faceId === attachPoint.userData.faceId);
+    if (!baseFace) {
+        console.error('Base face not found:', attachPoint.userData.faceId);
+        return;
+    }
+
+    console.log('Base face:', baseFace);
+    console.log('Assembly circles:', assemblyData.circles);
+    console.log('Assembly orientation faces:', assemblyData.orientationFaces);
+
+    // Calculate center of base mounting holes
+    const baseCenter = calculateHolePatternCenter(baseFace.holes);
+    const baseNormal = new THREE.Vector3(baseFace.normal.x, baseFace.normal.y, baseFace.normal.z);
+
+    console.log('Base center:', baseCenter);
+    console.log('Base normal:', baseNormal);
+
+    // Calculate center of assembly mounting circles
+    const assemblyHoleCenter = new THREE.Vector3();
+    assemblyData.circles.forEach(circle => {
+        assemblyHoleCenter.add(new THREE.Vector3(circle.position.x, circle.position.y, circle.position.z));
+    });
+    assemblyHoleCenter.divideScalar(assemblyData.circles.length);
+
+    console.log('Assembly hole center:', assemblyHoleCenter);
+
+    // Get the first orientation face from the assembly data
+    if (!assemblyData.orientationFaces || assemblyData.orientationFaces.length === 0) {
+        console.error('No orientation face found in assembly');
+        return;
+    }
+
+    const orientationFace = assemblyData.orientationFaces[0];
+    const orientNormal = new THREE.Vector3(
+        orientationFace.normal.x,
+        orientationFace.normal.y,
+        orientationFace.normal.z
+    );
+
+    console.log('Assembly orientation normal:', orientNormal);
+
+    // Get the assembly mounting face normal from the first circle
+    // The circles array contains the mounting holes - their rotation tells us the mounting face normal
+    const firstCircle = assemblyData.circles[0];
+
+    // For assemblies, we need to derive the mounting face normal
+    // Looking at the assembly data, the circles are on a face with normal pointing in a specific direction
+    // We can derive this from the circles' Z position being the same (they're on a planar face)
+
+    // Find the mounting face normal by looking at the face data
+    const mountingFaceData = assemblyData.models.find(m => m.faces && m.faces.length > 0);
+    let mountingNormal = new THREE.Vector3(0, 0, 1); // Default
+
+    if (mountingFaceData && mountingFaceData.faces && mountingFaceData.faces[0]) {
+        const face = mountingFaceData.faces[0];
+        mountingNormal = new THREE.Vector3(face.normal.x, face.normal.y, face.normal.z);
+        console.log('Found mounting face normal from assembly data:', mountingNormal);
+    }
+
+    // Step 1: Align mounting face normals (they should oppose each other)
+    const normalQuat = new THREE.Quaternion();
+    normalQuat.setFromUnitVectors(mountingNormal, baseNormal.clone().negate());
+    assemblyGroup.quaternion.copy(normalQuat);
+
+    console.log('Applied mounting normal alignment');
+
+    // Step 2: Rotate assembly so orientation face points up (Y+)
+    const rotatedOrientNormal = orientNormal.clone().applyQuaternion(normalQuat);
+    const targetUp = new THREE.Vector3(0, 1, 0);
+
+    // Project the rotated orientation normal onto the plane perpendicular to base normal
+    // and rotate around base normal to align it with up
+    const orientProjected = rotatedOrientNormal.clone().sub(
+        baseNormal.clone().multiplyScalar(rotatedOrientNormal.dot(baseNormal))
+    ).normalize();
+
+    const targetProjected = targetUp.clone().sub(
+        baseNormal.clone().multiplyScalar(targetUp.dot(baseNormal))
+    ).normalize();
+
+    // Calculate angle between projected vectors
+    const angle = Math.atan2(
+        orientProjected.clone().cross(targetProjected).dot(baseNormal),
+        orientProjected.dot(targetProjected)
+    );
+
+    const rotQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, angle);
+    assemblyGroup.quaternion.premultiply(rotQuat);
+
+    console.log('Applied orientation alignment, angle:', angle);
+
+    // Step 3: Position the assembly so mounting holes align
+    const transformedAssemblyCenter = assemblyHoleCenter.clone().applyQuaternion(assemblyGroup.quaternion);
+    const offset = baseCenter.clone().sub(transformedAssemblyCenter);
+    assemblyGroup.position.copy(offset);
+
+    console.log('Final assembly position:', assemblyGroup.position);
+    console.log('Final assembly rotation:', assemblyGroup.rotation);
+}
+
+// Export functions
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        attachAssemblyAtPoint,
+        alignAssemblyToBase
+    };
+}

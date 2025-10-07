@@ -306,7 +306,7 @@ function visualizeSlideFaces(geometryData, parentMesh) {
 // Scene download functionality
 async function downloadSceneAsZip() {
     const zip = new JSZip();
-    
+
     // Function to get model name from path
     const getModelName = (path) => {
         const parts = path.split('/');
@@ -325,16 +325,47 @@ async function downloadSceneAsZip() {
         }
     };
 
-    // Helper function to fetch text file
-    const fetchText = async (path) => {
+    // Helper function to fetch JSON file for credits
+    const fetchJSON = async (path) => {
         try {
             const response = await fetch(path);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.text();
+            return await response.json();
         } catch (error) {
-            console.error(`Error fetching text ${path}:`, error);
+            console.error(`Error fetching JSON ${path}:`, error);
             return null;
         }
+    };
+
+    // Track credits for all models
+    const creditsMap = new Map();
+
+    // Default credit info
+    const defaultCredit = {
+        author: 'MediaMan3D',
+        link: 'https://www.printables.com/model/39322-hero-me-gen7-platform-release4/'
+    };
+
+    // Helper to get credits from JSON
+    const getCredits = async (stlPath) => {
+        const jsonPath = stlPath.replace('.stl', '.json');
+        const jsonData = await fetchJSON(jsonPath);
+
+        if (jsonData && jsonData.credits) {
+            // Check if credits exist and have content
+            const hasAuthor = jsonData.credits.author && jsonData.credits.author.trim() !== '';
+            const hasLink = jsonData.credits.downloadLink && jsonData.credits.downloadLink.trim() !== '';
+
+            if (hasAuthor || hasLink) {
+                return {
+                    author: hasAuthor ? jsonData.credits.author : defaultCredit.author,
+                    link: hasLink ? jsonData.credits.downloadLink : defaultCredit.link
+                };
+            }
+        }
+
+        // No credits or empty credits - use default
+        return defaultCredit;
     };
 
     // Add base model
@@ -342,20 +373,65 @@ async function downloadSceneAsZip() {
     const baseSTL = await fetchSTL(baseModelPath);
     if (baseSTL) {
         zip.file("UniversalBase.stl", baseSTL);
+        creditsMap.set('UniversalBase.stl', await getCredits(baseModelPath));
     }
 
     // Track unique models to avoid duplicates
     const addedModels = new Set();
 
-    // Add all attached models
+    // Add all attached models (including assemblies)
     for (const [point, model] of attachedModels) {
-        const modelPath = model.userData.modelPath;
-        if (modelPath && !addedModels.has(modelPath)) {
-            const modelSTL = await fetchSTL(modelPath);
-            if (modelSTL) {
-                const modelName = getModelName(modelPath);
-                zip.file(modelName, modelSTL);
-                addedModels.add(modelPath);
+        // Check if this is an assembly
+        if (model.userData.isAssembly) {
+            // For assemblies, collect all child meshes first
+            const assemblyParts = [];
+            model.traverse((child) => {
+                if (child.isMesh && child.userData.assemblyPart) {
+                    assemblyParts.push(child);
+                }
+            });
+
+            // Now process them with async operations
+            for (const child of assemblyParts) {
+                const stlName = child.userData.modelName;
+
+                if (!addedModels.has(stlName)) {
+                    // Get the directory from the assembly - we need to track the original path
+                    // The assembly should store where it came from
+                    let directory = '';
+
+                    // Try to get directory from first attached model or use a stored reference
+                    for (const [pt, mdl] of attachedModels) {
+                        if (mdl === model) {
+                            // This is our assembly, try to find where it was loaded from
+                            // We should have stored this when creating the assembly
+                            const assemblyModelPath = mdl.userData.originalModelPath || '';
+                            directory = assemblyModelPath.substring(0, assemblyModelPath.lastIndexOf('/') + 1);
+                            break;
+                        }
+                    }
+
+                    const fullPath = `${directory}${stlName}`;
+
+                    const modelSTL = await fetchSTL(fullPath);
+                    if (modelSTL) {
+                        zip.file(stlName, modelSTL);
+                        creditsMap.set(stlName, await getCredits(fullPath));
+                        addedModels.add(stlName);
+                    }
+                }
+            }
+        } else {
+            // Regular single model
+            const modelPath = model.userData.modelPath;
+            if (modelPath && !addedModels.has(modelPath)) {
+                const modelSTL = await fetchSTL(modelPath);
+                if (modelSTL) {
+                    const modelName = getModelName(modelPath);
+                    zip.file(modelName, modelSTL);
+                    creditsMap.set(modelName, await getCredits(modelPath));
+                    addedModels.add(modelPath);
+                }
             }
         }
     }
@@ -366,19 +442,46 @@ async function downloadSceneAsZip() {
     readmeContent += "This zip contains all the STL files for your Hero Me assembly.\n\n";
     readmeContent += "Models included:\n";
     readmeContent += "- UniversalBase.stl (Main carriage base)\n";
-    
+
     for (const [point, model] of attachedModels) {
-        const modelPath = model.userData.modelPath;
-        if (modelPath) {
-            const modelName = getModelName(modelPath);
-            const attachmentType = point.userData?.attachmentType || 'unknown';
-            readmeContent += `- ${modelName} (${attachmentType})\n`;
+        if (model.userData.isAssembly) {
+            // List assembly parts
+            model.traverse((child) => {
+                if (child.isMesh && child.userData.assemblyPart) {
+                    const modelName = child.userData.modelName;
+                    readmeContent += `- ${modelName} (${model.userData.attachmentType} - assembly part)\n`;
+                }
+            });
+        } else {
+            const modelPath = model.userData.modelPath;
+            if (modelPath) {
+                const modelName = getModelName(modelPath);
+                const attachmentType = point.userData?.attachmentType || 'unknown';
+                readmeContent += `- ${modelName} (${attachmentType})\n`;
+            }
         }
     }
-    
+
     readmeContent += "\nGenerated by Hero Me Builder - https://heromebuilder.site\n";
-    
+
     zip.file("README.txt", readmeContent);
+
+    // Create CREDITS.txt file
+    let creditsContent = "CREDITS\n";
+    creditsContent += "=======\n\n";
+    creditsContent += "This assembly includes models created by the following authors:\n\n";
+
+    // Sort credits by filename for consistent output
+    const sortedCredits = Array.from(creditsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+    for (const [filename, credit] of sortedCredits) {
+        creditsContent += `${filename} - ${credit.author} - ${credit.link}\n`;
+    }
+
+    creditsContent += "\n";
+    creditsContent += "Generated by Hero Me Builder - https://heromebuilder.site\n";
+
+    zip.file("CREDITS.txt", creditsContent);
 
     // Generate and download zip
     const content = await zip.generateAsync({ type: "blob" });

@@ -360,10 +360,10 @@ async function attachModelAtPoint(modelPath) {
     try {
         // Show loading state
         document.body.style.cursor = 'wait';
-        
+
         // Set the global current attachment path for pattern matching
         window.currentAttachmentPath = modelPath;
-        
+
         // Load geometry data
         const baseModelPath = selectedPoint.userData.parentModel?.userData.modelPath || 'heromedir/base/UniversalBase.stl';
         const baseGeometryData = await loadGeometryData(baseModelPath);
@@ -372,6 +372,33 @@ async function attachModelAtPoint(modelPath) {
         if (!baseGeometryData || !attachGeometryData) {
             console.error('Failed to load geometry data - model attachment cancelled');
             document.body.style.cursor = 'default'; // Reset cursor
+            return;
+        }
+
+        // Check if this is an assembly reference
+        if (attachGeometryData.isAssemblyReference) {
+            console.log('Assembly reference detected, loading assembly instead of single model');
+
+            // Remove existing model if present
+            if (attachedModels.has(selectedPoint)) {
+                const oldModel = attachedModels.get(selectedPoint);
+                if (oldModel.userData.modelPath) {
+                    resetPatterns(oldModel.userData.modelPath);
+                }
+                scene.remove(oldModel);
+                attachedModels.delete(selectedPoint);
+            }
+
+            // Attach the assembly (pass the model path so we know the directory)
+            const assembly = await attachAssemblyAtPoint(attachGeometryData, selectedPoint, baseGeometryData, modelPath);
+
+            if (assembly) {
+                // Hide the menu
+                hideMenu();
+                console.log('Assembly attached successfully');
+            }
+
+            document.body.style.cursor = 'default';
             return;
         }
 

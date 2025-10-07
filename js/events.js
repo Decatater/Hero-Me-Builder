@@ -560,13 +560,29 @@ function onDoubleClick(event) {
 
     if (intersects.length > 0) {
         let targetMesh = intersects[0].object;
-        
+
         // Don't remove if clicking on position control arrows
         if (targetMesh.userData?.type === 'positionControl') return;
 
-        // Find the first parent that has a modelPath
-        while (targetMesh.parent && !targetMesh.userData?.modelPath) {
-            targetMesh = targetMesh.parent;
+        // Check if this is part of an assembly
+        let assemblyGroup = null;
+        let currentObj = targetMesh;
+        while (currentObj.parent) {
+            if (currentObj.userData?.isAssembly) {
+                assemblyGroup = currentObj;
+                break;
+            }
+            currentObj = currentObj.parent;
+        }
+
+        // If it's part of an assembly, target the assembly group instead
+        if (assemblyGroup) {
+            targetMesh = assemblyGroup;
+        } else {
+            // Find the first parent that has a modelPath (for non-assembly models)
+            while (targetMesh.parent && !targetMesh.userData?.modelPath) {
+                targetMesh = targetMesh.parent;
+            }
         }
 
         // Find the attachment point for this model

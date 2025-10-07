@@ -3,7 +3,7 @@
 <head>
     <title>Circle Detection Tool</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../fonts/fontawesome/css/all.min.css">
 </head>
 <body>
     <div class="container">
@@ -18,13 +18,26 @@
                 <input type="file" id="fileInput" accept=".stl">
                 <input type="file" id="jsonInput" accept=".json" style="display: none;">
                 <button id="resetView" class="button">Reset View</button>
-                <button id="exportData" class="button">Export Data</button>
                 <button id="loadJson" class="button">Load JSON</button>
                 <button id="resetAll" class="button">Reset All</button>
                 <button id="selectFace" class="button">Select Top Face</button>
                 <button id="selectSlideFaces" class="button">Select Slide Faces</button>
                 <button id="selectFrontFace" class="control-button">Select Front Face</button>
             </div>
+
+            <div class="export-section">
+                <h3>Export Data</h3>
+                <label>
+                    <span>Author:</span>
+                    <input type="text" id="authorName" placeholder="Your Name">
+                </label>
+                <label>
+                    <span>Download Link:</span>
+                    <input type="text" id="downloadLink" placeholder="https://...">
+                </label>
+                <button id="exportData" class="button">Export JSON</button>
+            </div>
+
             <div id="status"></div>
             <div id="detectedCircles"></div>
             <div id="slideFaces" class="panel">

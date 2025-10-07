@@ -68,10 +68,43 @@ async function loadGeometryData(modelPath) {
         }
         const data = await response.json();
         console.log('Loaded JSON data:', data);
+
+        // Check if this is an assembly reference
+        if (data.assemblyFile) {
+            console.log('Assembly reference detected:', data.assemblyFile);
+            data.isAssemblyReference = true;
+        }
+
         return data;
     } catch (error) {
         const fileName = modelPath.split('/').pop();
         const errorMessage = `Error loading geometry data for ${fileName}: ${error.message}`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        return null;
+    }
+}
+
+// Load assembly data from assembly JSON file
+async function loadAssemblyData(assemblyFileName, partPath) {
+    // Assembly files are in the same directory as the part STL files
+    // Extract directory from the part path
+    const directory = partPath.substring(0, partPath.lastIndexOf('/') + 1);
+    const assemblyPath = `${directory}${assemblyFileName}`;
+
+    try {
+        const response = await fetch(assemblyPath);
+        if (!response.ok) {
+            const errorMessage = `Missing assembly file: ${assemblyFileName}`;
+            console.error(errorMessage);
+            showUserError(errorMessage);
+            return null;
+        }
+        const data = await response.json();
+        console.log('Loaded assembly data:', data);
+        return data;
+    } catch (error) {
+        const errorMessage = `Error loading assembly data for ${assemblyFileName}: ${error.message}`;
         console.error(errorMessage);
         showUserError(errorMessage);
         return null;
