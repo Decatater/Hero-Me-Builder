@@ -158,7 +158,8 @@
         <h1 class="header-with-button">Hero Me Builder Changelog</h1>
         <!--BELOW: Define Tabs-->
         <div class="tab-container">
-            <div class="tab active" onclick="openTab(event, 'v020')">v0.2.0</div>
+            <div class="tab active" onclick="openTab(event, 'v021')">v0.2.1</div>
+            <div class="tab" onclick="openTab(event, 'v020')">v0.2.0</div>
             <div class="tab" onclick="openTab(event, 'v019')">v0.1.9</div>
             <div class="tab" onclick="openTab(event, 'v018')">v0.1.8</div>
             <div class="tab" onclick="openTab(event, 'v017')">v0.1.7</div>
@@ -170,7 +171,23 @@
             <div class="tab" onclick="openTab(event, 'v011')">v0.1.1</div>
         </div>
         <!--BELOW: Define Each Tabs Contents-->
-        <div id="v020" class="tab-content active">
+        <div id="v021" class="tab-content active">
+            <h2>Version 0.2.1 BETA - October 7 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Save and Load Build feature - Export builds as ZIP files containing a build.json that allows you to load and reconstruct complete assemblies later</li>
+                <li><span class="category">Added:</span> Load Build button on desktop (above Download Assembly) and mobile builder menu for importing saved builds</li>
+                <li><span class="category">Added:</span> Multi-part assembly support - Builder can now load multi-component assemblies as single models (currently available for gantry adapters)</li>
+                <li><span class="category">Added:</span> Assembly parts are displayed in random pastel colors to easily distinguish individual components</li>
+                <li><span class="category">Added:</span> Pre-Aligner tool - New dedicated page for creating multi-part assembly definitions with precise positioning</li>
+                <li><span class="category">Added:</span> CREDITS.txt file automatically generated in exported ZIPs listing all model authors and download links</li>
+                <li><span class="category">Added:</span> Default credit attribution to MediaMan3D for models without explicit credit data</li>
+                <li><span class="category">Improved:</span> Build loading system reconstructs attachments hierarchically, ensuring risers, spacers, and direct drives load in correct order</li>
+                <li><span class="category">Improved:</span> Double-click to remove now works on any part of a multi-part assembly to remove the entire assembly group</li>
+                <li><span class="category">Improved:</span> Enhanced attachment point matching for better compatibility when loading builds with risers and spacers</li>
+            </ul>
+        </div>
+
+        <div id="v020" class="tab-content">
             <h2>Version 0.2.0 BETA - October 4 2025</h2>
             <ul>
                 <li><span class="category">Added:</span> Mobile-friendly interface with collapsible bottom menu for tools and options</li>

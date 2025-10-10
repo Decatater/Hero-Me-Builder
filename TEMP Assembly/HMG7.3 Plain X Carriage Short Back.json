@@ -1,7 +1,0 @@
-{
-  "version": "1.0",
-  "assemblyFile": "Ender3MGN9HPlain.json",
-  "modelId": "model_4",
-  "modelName": "HMG7.3 Plain X Carriage Short Back.stl",
-  "message": "This part belongs to the \"Ender3MGN9HPlain\" assembly. Load the assembly JSON first, then load this STL to apply positioning."
-}

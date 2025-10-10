@@ -483,6 +483,56 @@ async function downloadSceneAsZip() {
 
     zip.file("CREDITS.txt", creditsContent);
 
+    // Create build.json file for reconstructing the build
+    const buildData = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        attachments: []
+    };
+
+    // Track all attachments
+    for (const [point, model] of attachedModels) {
+        const attachment = {
+            attachmentPoint: {
+                type: point.userData.attachmentType,
+                name: point.userData.attachmentName,
+                faceId: point.userData.faceId
+            }
+        };
+
+        if (model.userData.isAssembly) {
+            // For assemblies, store assembly info
+            attachment.isAssembly = true;
+            attachment.assemblyFile = model.userData.assemblyFile;
+            attachment.modelPath = model.userData.originalModelPath;
+        } else {
+            // For regular models
+            attachment.isAssembly = false;
+            attachment.modelPath = model.userData.modelPath;
+        }
+
+        // Track parent for secondary attachments
+        if (point.userData.parentModel) {
+            // Find parent's attachment info
+            for (const [parentPoint, parentModel] of attachedModels) {
+                if (parentModel === point.userData.parentModel) {
+                    attachment.parentAttachment = {
+                        type: parentPoint.userData.attachmentType,
+                        name: parentPoint.userData.attachmentName,
+                        modelPath: parentModel.userData.isAssembly ?
+                            parentModel.userData.originalModelPath :
+                            parentModel.userData.modelPath
+                    };
+                    break;
+                }
+            }
+        }
+
+        buildData.attachments.push(attachment);
+    }
+
+    zip.file("build.json", JSON.stringify(buildData, null, 2));
+
     // Generate and download zip
     const content = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(content);
@@ -495,6 +545,220 @@ async function downloadSceneAsZip() {
     URL.revokeObjectURL(url);
 }
 
+// Load a build from a zip file
+async function loadBuildFromZip() {
+    // Create file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.zip';
+
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Create loading overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            color: white;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+        `;
+        overlay.textContent = 'Loading build...';
+        document.body.appendChild(overlay);
+
+        try {
+            console.log('Loading build from zip:', file.name);
+
+            // Read the zip file
+            const zip = await JSZip.loadAsync(file);
+
+            // Extract build.json
+            const buildJsonFile = zip.file('build.json');
+            if (!buildJsonFile) {
+                alert('This zip file does not contain a build.json file. Please select a valid Hero Me Builder export.');
+                return;
+            }
+
+            const buildJsonText = await buildJsonFile.async('text');
+            const buildData = JSON.parse(buildJsonText);
+
+            console.log('Build data loaded:', buildData);
+
+            // Clear current build first
+            const modelsToRemove = Array.from(attachedModels.entries());
+            for (const [point, model] of modelsToRemove) {
+                if (!point.userData.parentModel) {
+                    removeModel(model);
+                }
+            }
+
+            // Reconstruct the build
+            // Sort attachments so primary attachments come before secondary ones
+            const primaryAttachments = buildData.attachments.filter(a => !a.parentAttachment);
+            const secondaryAttachments = buildData.attachments.filter(a => a.parentAttachment);
+
+            // Load primary attachments first (sequentially to ensure they complete)
+            for (const attachment of primaryAttachments) {
+                await loadAttachment(attachment);
+                // Delay to ensure attachment points are created, especially on slower servers
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+
+            // Longer delay before secondary attachments to ensure all primary points are ready
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Then load secondary attachments (sequentially)
+            for (const attachment of secondaryAttachments) {
+                await loadAttachment(attachment);
+                // Delay to ensure attachment points are created, especially on slower servers
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+
+            console.log('Build loaded successfully');
+
+            // Remove overlay
+            document.body.removeChild(overlay);
+
+            alert('Build loaded successfully!');
+
+        } catch (error) {
+            console.error('Error loading build:', error);
+
+            // Remove overlay
+            if (overlay.parentNode) {
+                document.body.removeChild(overlay);
+            }
+
+            alert('Error loading build: ' + error.message);
+        }
+    };
+
+    input.click();
+}
+
+// Helper function to load a single attachment
+async function loadAttachment(attachment) {
+    console.log('Loading attachment:', attachment);
+
+    // Find the attachment point
+    let targetPoint = null;
+
+    if (attachment.parentAttachment) {
+        // This is a secondary attachment - find the parent first by its model path
+        const parentModelEntry = Array.from(attachedModels.entries()).find(([point, model]) => {
+            const modelPath = model.userData.isAssembly ?
+                model.userData.originalModelPath :
+                model.userData.modelPath;
+            return modelPath === attachment.parentAttachment.modelPath;
+        });
+
+        if (!parentModelEntry) {
+            console.error('Parent model not found for secondary attachment:', attachment);
+            console.error('Looking for parent path:', attachment.parentAttachment.modelPath);
+            console.error('Available models:', Array.from(attachedModels.values()).map(m =>
+                m.userData.isAssembly ? m.userData.originalModelPath : m.userData.modelPath
+            ));
+            return;
+        }
+
+        // Find attachment point on the parent model
+        const [parentPoint, parentMesh] = parentModelEntry;
+
+        // For secondary attachments, match by type and name (not faceId, as it may vary)
+        targetPoint = attachmentPoints.find(p =>
+            p.userData.parentModel === parentMesh &&
+            p.userData.attachmentType === attachment.attachmentPoint.type &&
+            p.userData.attachmentName === attachment.attachmentPoint.name
+        );
+
+        if (!targetPoint) {
+            // If not found by exact match, try to be flexible with spacer/directdrive types
+            // since risers change the attachment point type
+            if (attachment.attachmentPoint.type === 'spacer' || attachment.attachmentPoint.type === 'directdrive') {
+                targetPoint = attachmentPoints.find(p =>
+                    p.userData.parentModel === parentMesh &&
+                    (p.userData.attachmentType === 'spacer' || p.userData.attachmentType === 'directdrive') &&
+                    p.userData.attachmentName === attachment.attachmentPoint.name
+                );
+            }
+
+            if (!targetPoint) {
+                console.error('Attachment point not found on parent:', attachment.attachmentPoint);
+                console.error('Available attachment points on parent:', attachmentPoints.filter(p =>
+                    p.userData.parentModel === parentMesh
+                ).map(p => ({ type: p.userData.attachmentType, name: p.userData.attachmentName, faceId: p.userData.faceId })));
+            }
+        }
+    } else {
+        // Primary attachment - find on main model
+        // First try exact match by type, name, and faceId
+        targetPoint = attachmentPoints.find(p =>
+            !p.userData.parentModel &&
+            p.userData.attachmentType === attachment.attachmentPoint.type &&
+            p.userData.attachmentName === attachment.attachmentPoint.name &&
+            p.userData.faceId === attachment.attachmentPoint.faceId
+        );
+
+        // If not found and this is a wing attachment, use filename to determine left/right
+        if (!targetPoint && attachment.attachmentPoint.type === 'wing') {
+            const fileName = attachment.modelPath.toLowerCase();
+            const isLeft = fileName.includes('left');
+            const isRight = fileName.includes('right');
+
+            // Find the correct wing point based on side
+            // wing = left side (faceId 6), wing_opposite = right side (faceId 4)
+            const targetName = isLeft ? 'wing' : (isRight ? 'wing_opposite' : null);
+
+            if (targetName) {
+                targetPoint = attachmentPoints.find(p =>
+                    !p.userData.parentModel &&
+                    p.userData.attachmentType === 'wing' &&
+                    p.userData.attachmentName === targetName
+                );
+            }
+        }
+
+        // If still not found, try by type and faceId (for cases where name changed)
+        if (!targetPoint) {
+            targetPoint = attachmentPoints.find(p =>
+                !p.userData.parentModel &&
+                p.userData.attachmentType === attachment.attachmentPoint.type &&
+                p.userData.faceId === attachment.attachmentPoint.faceId
+            );
+        }
+
+        if (!targetPoint) {
+            console.error('Primary attachment point not found:', attachment.attachmentPoint);
+            console.error('Available primary points:', attachmentPoints.filter(p =>
+                !p.userData.parentModel
+            ).map(p => ({ type: p.userData.attachmentType, name: p.userData.attachmentName, faceId: p.userData.faceId })));
+        }
+    }
+
+    if (!targetPoint) {
+        console.error('Attachment point not found:', attachment.attachmentPoint);
+        return;
+    }
+
+    // Set as selected point
+    selectedPoint = targetPoint;
+
+    // Attach the model and wait for it to complete
+    await attachModelAtPoint(attachment.modelPath);
+
+    console.log('Attachment loaded:', attachment.modelPath);
+}
+
 // Export functions for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
@@ -505,6 +769,7 @@ if (typeof module !== 'undefined' && module.exports) {
         visualizeGeometryFeatures,
         visualizeHoles,
         visualizeSlideFaces,
-        downloadSceneAsZip
+        downloadSceneAsZip,
+        loadBuildFromZip
     };
 }

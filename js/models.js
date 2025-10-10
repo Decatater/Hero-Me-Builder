@@ -775,6 +775,14 @@ function alignProbeModel(mesh, attachPoint, baseGeometryData, attachGeometryData
 function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryData) {
     // Handle probe mounts (slide faces) first, before looking for hole pattern faces
     if (attachPoint.userData.parentModel && attachPoint.userData.attachmentType === 'probe') {
+        // Check if we have the necessary slide face data
+        if (!baseGeometryData?.slideFaces?.[0] || !attachGeometryData?.slideFaces?.[0]) {
+            console.error('Missing slide face data for probe alignment');
+            console.error('Base slide faces:', baseGeometryData?.slideFaces);
+            console.error('Attach slide faces:', attachGeometryData?.slideFaces);
+            return;
+        }
+
         // Probe alignment - EXACT copy from OLD/app.js
         const attachOrientation = new THREE.Vector3(
             attachGeometryData.orientationFace.normal.x,

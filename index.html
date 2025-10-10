@@ -2,6 +2,9 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Hero Me Builder</title>
     <style>
         body {
@@ -808,9 +811,13 @@
                 </button>
             </div>
             <div class="mobile-builder-row">
-                <button id="mobileDownloadButton" class="mobile-builder-button mobile-builder-button-full" onclick="downloadSceneAsZip()">
+                <button id="mobileDownloadButton" class="mobile-builder-button" onclick="downloadSceneAsZip()">
                     <i class="fas fa-download"></i>
                     <span>Download</span>
+                </button>
+                <button id="mobileLoadButton" class="mobile-builder-button" onclick="loadBuildFromZip()">
+                    <i class="fas fa-upload"></i>
+                    <span>Load Build</span>
                 </button>
             </div>
         </div>
@@ -823,20 +830,20 @@
     <script src="https://cdn.jsdelivr.net/npm/three/examples/js/exporters/STLExporter.js"></script>
 
     <!-- Hero Me Builder Modular Scripts - Load in dependency order -->
-    <script src="js/state.js"></script>
-    <script src="js/geometry.js"></script>
-    <script src="js/patterns.js"></script>
-    <script src="js/filesystem.js"></script>
-    <script src="js/scene.js"></script>
+    <script src="js/state.js?v=0.2.1"></script>
+    <script src="js/geometry.js?v=0.2.1"></script>
+    <script src="js/patterns.js?v=0.2.1"></script>
+    <script src="js/filesystem.js?v=0.2.1"></script>
+    <script src="js/scene.js?v=0.2.1"></script>
     <!-- Specialized alignment modules - load before models.js -->
-    <script src="js/wings-and-probes.js"></script>
-    <script src="js/gantry-systems.js"></script>
-    <script src="js/hotends-and-drives.js"></script>
-    <script src="js/assemblies.js"></script>
-    <script src="js/models.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/wings-and-probes.js?v=0.2.1"></script>
+    <script src="js/gantry-systems.js?v=0.2.1"></script>
+    <script src="js/hotends-and-drives.js?v=0.2.1"></script>
+    <script src="js/assemblies.js?v=0.2.1"></script>
+    <script src="js/models.js?v=0.2.1"></script>
+    <script src="js/ui.js?v=0.2.1"></script>
+    <script src="js/events.js?v=0.2.1"></script>
+    <script src="js/main.js?v=0.2.1"></script>
 
     <script>
         let appScriptLoaded = false;

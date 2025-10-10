@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-10-07T22:41:57.086Z",
+  "attachments": [
+    {
+      "attachmentPoint": {
+        "type": "skirt",
+        "name": "skirt",
+        "faceId": 7
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/hotendmounts/Skirts/HMG7 Creality OEM-CR10S-Ender3-5 Skirt V2.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "adxl",
+        "name": "adxl",
+        "faceId": 2
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/adxl345/HMG7.2 ADXL345 19mm Mount V2.stl",
+      "parentAttachment": {
+        "type": "skirt",
+        "name": "skirt",
+        "modelPath": "heromedir/hotendmounts/Skirts/HMG7 Creality OEM-CR10S-Ender3-5 Skirt V2.stl"
+      }
+    },
+    {
+      "attachmentPoint": {
+        "type": "partcooling",
+        "name": "partcooling_opposite",
+        "faceId": 3
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/partcooling/Standard Ducts/5015 fans/HMG7.4 Standard Single 5015 Right Duct V5.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "partcooling",
+        "name": "partcooling",
+        "faceId": 5
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/partcooling/Standard Ducts/5015 fans/HMG7.4 Standard Single 5015 Left Duct V5.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "wing",
+        "name": "wing",
+        "faceId": 6
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/ablmounts/BL Touch-CR Touch-Most Probes Wings/HMG7 BL-CR Touch Narrow Left Wing V2.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "probe",
+        "name": "probe",
+        "faceId": 1
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/ablmounts/BLTouch Mounts/HMG7 BLTouch Right Mount.stl",
+      "parentAttachment": {
+        "type": "wing",
+        "name": "wing",
+        "modelPath": "heromedir/ablmounts/BL Touch-CR Touch-Most Probes Wings/HMG7 BL-CR Touch Narrow Left Wing V2.stl"
+      }
+    },
+    {
+      "attachmentPoint": {
+        "type": "wing",
+        "name": "wing_opposite",
+        "faceId": 4
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/cablemanagement/HMG7 Cable Tower Standard Right 10mm.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "gantry",
+        "name": "gantry",
+        "faceId": 8
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/gantryadapters/Creality/HMG7 Ender 6 Gantry Adapter.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "hotend",
+        "name": "hotend",
+        "faceId": 1
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/hotendmounts/Hotends/HMG7.3 Creality OEM-CR10S-Ender3-5 2-Screw Mount V2.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "fanguard",
+        "name": "fanguard",
+        "faceId": 2
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/options/Fan Guards/HMG7.4 Hero Me Fan Guard.stl"
+    },
+    {
+      "attachmentPoint": {
+        "type": "spacer",
+        "name": "directdrive",
+        "faceId": 2
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/directdrivemounts/HMG7.3 4mm DD Riser V2.stl",
+      "parentAttachment": {
+        "type": "hotend",
+        "name": "hotend",
+        "modelPath": "heromedir/hotendmounts/Hotends/HMG7.3 Creality OEM-CR10S-Ender3-5 2-Screw Mount V2.stl"
+      }
+    },
+    {
+      "attachmentPoint": {
+        "type": "directdrive",
+        "name": "directdrive",
+        "faceId": 2
+      },
+      "isAssembly": false,
+      "modelPath": "heromedir/directdrivemounts/Bondtech/HMG7 Bondtech BMG BMG-M Rear Mirror Mount V2.stl",
+      "parentAttachment": {
+        "type": "spacer",
+        "name": "directdrive",
+        "modelPath": "heromedir/directdrivemounts/HMG7.3 4mm DD Riser V2.stl"
+      }
+    }
+  ]
+}

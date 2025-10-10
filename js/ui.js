@@ -70,6 +70,37 @@ function createDownloadButton() {
     document.body.appendChild(downloadButton);
 }
 
+// Create the load build button
+function createLoadBuildButton() {
+    const loadButton = document.createElement('button');
+    loadButton.textContent = 'Load Build';
+    loadButton.style.position = 'fixed';
+    loadButton.style.bottom = '70px'; // Position above download button
+    loadButton.style.right = '20px';
+    loadButton.style.padding = '10px 20px';
+    loadButton.style.backgroundColor = '#2196F3';
+    loadButton.style.color = 'white';
+    loadButton.style.border = 'none';
+    loadButton.style.borderRadius = '5px';
+    loadButton.style.cursor = 'pointer';
+    loadButton.style.zIndex = '1000';
+    loadButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    loadButton.style.transition = 'background-color 0.3s';
+    loadButton.style.fontFamily = 'Arial, sans-serif';
+    loadButton.style.fontSize = '14px';
+
+    loadButton.onmouseover = function() {
+        this.style.backgroundColor = '#1976D2';
+    };
+
+    loadButton.onmouseout = function() {
+        this.style.backgroundColor = '#2196F3';
+    };
+
+    loadButton.onclick = loadBuildFromZip;
+    document.body.appendChild(loadButton);
+}
+
 // Check if device is mobile for larger arrow sizes
 function isMobileDevice() {
     return window.innerWidth <= 1023 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -431,6 +462,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         createWrenchButton,
         createDownloadButton,
+        createLoadBuildButton,
         toggleTranslationMode,
         exitTranslationMode,
         createTranslationArrows,

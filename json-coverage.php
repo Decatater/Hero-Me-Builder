@@ -18,7 +18,14 @@ function scanDirectory($dir) {
     foreach ($iterator as $file) {
         $filename = $file->getFilename();
         $extension = strtolower($file->getExtension());
-        
+        $path = $file->getPath();
+
+        // Skip files in "Custom" folders
+        if (strpos($path, DIRECTORY_SEPARATOR . 'Custom') !== false ||
+            strpos($path, '/Custom') !== false) {
+            continue;
+        }
+
         if ($extension === 'stl') {
             $basename = pathinfo($filename, PATHINFO_FILENAME);
             $stlFiles[] = $basename;

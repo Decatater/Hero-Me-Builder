@@ -11,6 +11,7 @@ function init() {
         
         // Create UI elements
         createDownloadButton();
+        createLoadBuildButton();
         createWrenchButton();
         
         // Setup event listeners
