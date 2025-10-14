@@ -136,8 +136,12 @@ async function attachAssemblyAtPoint(assemblyReference, attachPoint, baseGeometr
         if (assemblyData.circles && assemblyData.circles.length > 0) {
             console.log('Assembly has', assemblyData.circles.length, 'mounting circles');
 
+            // Determine attachment type from the path (same pattern as regular models)
+            const attachmentType = attachPoint.userData.attachmentType;
+            console.log('Assembly attachment type:', attachmentType);
+
             // Use the circles to align the assembly to the base attachment point
-            alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData);
+            alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData, attachmentType);
         }
 
         // Add the assembly group to the appropriate parent
@@ -160,8 +164,8 @@ async function attachAssemblyAtPoint(assemblyReference, attachPoint, baseGeometr
 }
 
 // Align assembly to base using mounting holes and orientation face
-function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData) {
-    console.log('Aligning assembly to base');
+function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeometryData, attachmentType) {
+    console.log('Aligning assembly to base, attachment type:', attachmentType);
 
     // Get base face (the face we're attaching to on the base model)
     const baseFace = baseGeometryData.faces.find(face => face.faceId === attachPoint.userData.faceId);
@@ -205,14 +209,6 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
 
     console.log('Assembly orientation normal:', orientNormal);
 
-    // Get the assembly mounting face normal from the first circle
-    // The circles array contains the mounting holes - their rotation tells us the mounting face normal
-    const firstCircle = assemblyData.circles[0];
-
-    // For assemblies, we need to derive the mounting face normal
-    // Looking at the assembly data, the circles are on a face with normal pointing in a specific direction
-    // We can derive this from the circles' Z position being the same (they're on a planar face)
-
     // Find the mounting face normal by looking at the face data
     const mountingFaceData = assemblyData.models.find(m => m.faces && m.faces.length > 0);
     let mountingNormal = new THREE.Vector3(0, 0, 1); // Default
@@ -230,18 +226,37 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
 
     console.log('Applied mounting normal alignment');
 
-    // Step 2: Rotate assembly so orientation face points up (Y+)
+    // Step 2: Rotate assembly based on attachment type
+    // Different attachment types have different orientation requirements
     const rotatedOrientNormal = orientNormal.clone().applyQuaternion(normalQuat);
-    const targetUp = new THREE.Vector3(0, 1, 0);
+    let targetOrientation;
+
+    if (attachmentType === 'gantry' || attachmentType === 'gantryclip') {
+        // Gantry adapters: orientation face points up (Y+)
+        targetOrientation = new THREE.Vector3(0, 1, 0);
+        console.log('Using gantry alignment: orientation face -> Y+');
+    } else if (attachmentType === 'hotend' || attachmentType === 'directdrive' || attachmentType === 'spacer') {
+        // Hotends, direct drives, spacers: orientation face points up (Y+)
+        targetOrientation = new THREE.Vector3(0, 1, 0);
+        console.log('Using hotend/directdrive alignment: orientation face -> Y+');
+    } else if (attachmentType === 'wing') {
+        // Wings might need different orientation
+        targetOrientation = new THREE.Vector3(0, 1, 0);
+        console.log('Using wing alignment: orientation face -> Y+');
+    } else {
+        // Default: orientation face points up (Y+)
+        targetOrientation = new THREE.Vector3(0, 1, 0);
+        console.log('Using default alignment: orientation face -> Y+');
+    }
 
     // Project the rotated orientation normal onto the plane perpendicular to base normal
-    // and rotate around base normal to align it with up
+    // and rotate around base normal to align it with target orientation
     const orientProjected = rotatedOrientNormal.clone().sub(
         baseNormal.clone().multiplyScalar(rotatedOrientNormal.dot(baseNormal))
     ).normalize();
 
-    const targetProjected = targetUp.clone().sub(
-        baseNormal.clone().multiplyScalar(targetUp.dot(baseNormal))
+    const targetProjected = targetOrientation.clone().sub(
+        baseNormal.clone().multiplyScalar(targetOrientation.dot(baseNormal))
     ).normalize();
 
     // Calculate angle between projected vectors

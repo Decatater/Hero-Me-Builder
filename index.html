@@ -275,6 +275,15 @@
             transform: translateY(-1px);
         }
 
+        .json-tracker-button {
+            background-color: #722ed1;
+        }
+
+        .json-tracker-button:hover {
+            background-color: #9254de;
+            transform: translateY(-1px);
+        }
+
         .contributors-menu {
             position: fixed;
             bottom: -100vh;
@@ -347,6 +356,30 @@
             font-size: 18px;
             font-weight: bold;
             color: #42f48c;
+        }
+
+        .coverage-details-btn {
+            display: inline-block;
+            width: calc(100% - 4px);
+            margin-top: 12px;
+            padding: 8px 12px;
+            background-color: #722ed1;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            text-decoration: none;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background-color 0.3s, transform 0.2s;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .coverage-details-btn:hover {
+            background-color: #9254de;
+            transform: translateY(-1px);
+            color: white;
         }
 
         .contributors-header {
@@ -595,7 +628,8 @@
             /* Hide desktop controls on mobile */
             #wrenchButton,
             button[onclick*="downloadSceneAsZip"]:not(#mobileDownloadButton),
-            .home-icon-button {
+            .home-icon-button,
+            .desktop-only-button {
                 display: none !important;
             }
         }
@@ -765,6 +799,7 @@
     <div id="jsonCoverageBox" class="json-coverage-box">
         <div class="coverage-title">Part Coverage</div>
         <div class="coverage-stat">Loading...</div>
+        <a href="https://heromebuilder.site/json-tracker" class="coverage-details-btn">View Details</a>
     </div>
 
     <!-- Utility Buttons -->
@@ -829,21 +864,36 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three/examples/js/exporters/STLExporter.js"></script>
 
+    <script>
+        // Version string for cache busting - change this to force reload all scripts
+        const SCRIPT_VERSION = '0.2.3';
+    </script>
+
     <!-- Hero Me Builder Modular Scripts - Load in dependency order -->
-    <script src="js/state.js?v=0.2.1"></script>
-    <script src="js/geometry.js?v=0.2.1"></script>
-    <script src="js/patterns.js?v=0.2.1"></script>
-    <script src="js/filesystem.js?v=0.2.1"></script>
-    <script src="js/scene.js?v=0.2.1"></script>
-    <!-- Specialized alignment modules - load before models.js -->
-    <script src="js/wings-and-probes.js?v=0.2.1"></script>
-    <script src="js/gantry-systems.js?v=0.2.1"></script>
-    <script src="js/hotends-and-drives.js?v=0.2.1"></script>
-    <script src="js/assemblies.js?v=0.2.1"></script>
-    <script src="js/models.js?v=0.2.1"></script>
-    <script src="js/ui.js?v=0.2.1"></script>
-    <script src="js/events.js?v=0.2.1"></script>
-    <script src="js/main.js?v=0.2.1"></script>
+    <script>
+        const scripts = [
+            'js/state.js',
+            'js/geometry.js',
+            'js/patterns.js',
+            'js/filesystem.js',
+            'js/scene.js',
+            // Specialized alignment modules - load before models.js
+            'js/wings-and-probes.js',
+            'js/gantry-systems.js',
+            'js/hotends-and-drives.js',
+            'js/assemblies.js',
+            'js/models.js',
+            'js/ui.js',
+            'js/events.js',
+            'js/main.js'
+        ];
+
+        scripts.forEach(src => {
+            const script = document.createElement('script');
+            script.src = `${src}?v=${SCRIPT_VERSION}`;
+            document.write(script.outerHTML);
+        });
+    </script>
 
     <script>
         let appScriptLoaded = false;
@@ -998,9 +1048,14 @@
                 <a href="https://discord.gg/BZVaTDMVj6" class="mobile-menu-button" style="background: #7289da; margin: 0;">Join Discord</a>
             </div>
 
-            <div style="background: #34495e; padding: 15px; border-radius: 8px;">
+            <div style="background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">Bug Tracker</p>
-                <a href="https://heromebuilder.site/tracker" class="mobile-menu-button" style="background: #e67e22; margin: 0;">Tracker</a>
+                <a href="https://heromebuilder.site/tracker" class="mobile-menu-button" style="background: #e67e22; margin: 0;">Issue Tracker</a>
+            </div>
+
+            <div style="background: #34495e; padding: 15px; border-radius: 8px;">
+                <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">JSON Coverage</p>
+                <a href="https://heromebuilder.site/json-tracker" class="mobile-menu-button" style="background: #722ed1; margin: 0;">JSON Tracker</a>
             </div>
         </div>
     </div>

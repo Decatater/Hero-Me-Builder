@@ -9,14 +9,14 @@ function markPatternAsUsed(modelPath, pattern) {
             usedHolePatterns.set(modelPath, new Set());
         }
         usedHolePatterns.get(modelPath).add(pattern.faceId);
-        console.log(`Marked hole pattern ${pattern.faceId} as used for model ${modelPath}`);
+        // console.log(`Marked hole pattern ${pattern.faceId} as used for model ${modelPath}`);
     } else if (pattern.groupIndex !== undefined) {
         // For slide faces
         if (!usedPatterns.has(modelPath)) {
             usedPatterns.set(modelPath, { holes: new Set(), slides: new Set() });
         }
         usedPatterns.get(modelPath).slides.add(pattern.groupIndex);
-        console.log(`Marked slide face group ${pattern.groupIndex} as used for model ${modelPath}`);
+        // console.log(`Marked slide face group ${pattern.groupIndex} as used for model ${modelPath}`);
     }
 }
 
@@ -29,11 +29,11 @@ function isPatternUsed(modelPath, pattern) {
     if (pattern.faceId !== undefined) {
         const isUsed = usedHolePatterns.has(modelPath) &&
             usedHolePatterns.get(modelPath).has(pattern.faceId);
-        console.log(`Checking if face ${pattern.faceId} is used for model ${modelPath}: ${isUsed}`);
+        // console.log(`Checking if face ${pattern.faceId} is used for model ${modelPath}: ${isUsed}`);
         return isUsed;
     } else if (pattern.groupIndex !== undefined) {
         const isUsed = modelPatterns.slides.has(pattern.groupIndex);
-        console.log(`Checking if slide face group ${pattern.groupIndex} is used for model ${modelPath}: ${isUsed}`);
+        // console.log(`Checking if slide face group ${pattern.groupIndex} is used for model ${modelPath}: ${isUsed}`);
         return isUsed;
     }
 
@@ -44,13 +44,13 @@ function isPatternUsed(modelPath, pattern) {
 function isHolePatternUsed(modelPath, face) {
     const isUsed = usedHolePatterns.has(modelPath) &&
         usedHolePatterns.get(modelPath).has(face.faceId);
-    console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
+    // console.log(`Checking if face ${face.faceId} is used for model ${modelPath}: ${isUsed}`);
     return isUsed;
 }
 
 // Reset patterns for a model (when removing attachments)
 function resetPatterns(modelPath, isParent = false) {
-    console.log(`Resetting patterns for model ${modelPath} (isParent: ${isParent})`);
+    // console.log(`Resetting patterns for model ${modelPath} (isParent: ${isParent})`);
 
     // Always clear direct patterns
     usedHolePatterns.delete(modelPath);
@@ -60,17 +60,17 @@ function resetPatterns(modelPath, isParent = false) {
     if (isParent) {
         attachedModels.forEach((model, point) => {
             if (point.userData.parentModel?.userData?.modelPath === modelPath) {
-                console.log('Clearing child patterns for:', model.userData.modelPath);
+                // console.log('Clearing child patterns for:', model.userData.modelPath);
                 usedHolePatterns.delete(model.userData.modelPath);
                 usedPatterns.delete(model.userData.modelPath);
             }
         });
     }
 
-    console.log('Pattern tracking state after reset:', {
-        usedHolePatterns: Object.fromEntries(usedHolePatterns),
-        usedPatterns: Object.fromEntries(usedPatterns)
-    });
+    // console.log('Pattern tracking state after reset:', {
+    //     usedHolePatterns: Object.fromEntries(usedHolePatterns),
+    //     usedPatterns: Object.fromEntries(usedPatterns)
+    // });
 }
 
 // Get all used patterns for a model
@@ -80,12 +80,12 @@ function getUsedPatterns(modelPath) {
 
 // Clean up orphaned patterns (patterns for models that are no longer attached)
 function cleanupOrphanedPatterns() {
-    console.log('Cleaning up orphaned patterns...');
-    
+    // console.log('Cleaning up orphaned patterns...');
+
     // Get list of currently attached model paths
     const activeModelPaths = new Set();
     activeModelPaths.add('heromedir/base/UniversalBase.stl'); // Always keep base model
-    
+
     attachedModels.forEach((model, point) => {
         if (model.userData.modelPath) {
             activeModelPaths.add(model.userData.modelPath);
@@ -96,7 +96,7 @@ function cleanupOrphanedPatterns() {
     const holePatternPaths = Array.from(usedHolePatterns.keys());
     holePatternPaths.forEach(modelPath => {
         if (!activeModelPaths.has(modelPath)) {
-            console.log(`Removing orphaned hole patterns for: ${modelPath}`);
+            // console.log(`Removing orphaned hole patterns for: ${modelPath}`);
             usedHolePatterns.delete(modelPath);
         }
     });
@@ -104,12 +104,12 @@ function cleanupOrphanedPatterns() {
     const slidePatternsKeys = Array.from(usedPatterns.keys());
     slidePatternsKeys.forEach(modelPath => {
         if (!activeModelPaths.has(modelPath)) {
-            console.log(`Removing orphaned slide patterns for: ${modelPath}`);
+            // console.log(`Removing orphaned slide patterns for: ${modelPath}`);
             usedPatterns.delete(modelPath);
         }
     });
-    
-    console.log('Pattern cleanup complete');
+
+    // console.log('Pattern cleanup complete');
 }
 
 // Debug function to show current pattern tracking state
@@ -144,23 +144,23 @@ function initializePatternTracking() {
     // Clear any existing pattern data
     usedHolePatterns.clear();
     usedPatterns.clear();
-    
+
     // Mark base model patterns that are already occupied by existing attachments
     attachedModels.forEach((model, point) => {
         if (model.userData.patternMapping) {
             const { baseFaceId, attachFaceId } = model.userData.patternMapping;
-            
+
             // Mark base model pattern as used
             markPatternAsUsed('heromedir/base/UniversalBase.stl', { faceId: baseFaceId });
-            
+
             // Mark attachment model pattern as used
             if (model.userData.modelPath && attachFaceId) {
                 markPatternAsUsed(model.userData.modelPath, { faceId: attachFaceId });
             }
         }
     });
-    
-    console.log('Pattern tracking system initialized');
+
+    // console.log('Pattern tracking system initialized');
 }
 
 // Validate pattern consistency (useful for debugging)

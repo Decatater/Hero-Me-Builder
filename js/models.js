@@ -91,7 +91,7 @@ function loadModel() {
             }, 1000);
         },
         function (progress) {
-            console.log('Loading progress:', (progress.loaded / progress.total) * 100 + '%');
+            // console.log('Loading progress:', (progress.loaded / progress.total) * 100 + '%');
         },
         function (error) {
             console.error('Error loading model:', error);
@@ -327,12 +327,12 @@ async function createAttachmentPoints(object) {
         }
     }
 
-    console.log(`Created ${attachmentPoints.length} attachment points`);
+    // console.log(`Created ${attachmentPoints.length} attachment points`);
 }
 
 // Load and attach a model at the selected point
 async function attachModelAtPoint(modelPath) {
-    console.log('Attaching model:', modelPath);
+    // console.log('Attaching model:', modelPath);
 
     if (!selectedPoint || !modelPath) return;
 
@@ -349,13 +349,13 @@ async function attachModelAtPoint(modelPath) {
         }
     }
 
-    console.log('Selected attachment point:', {
-        attachmentType: selectedPoint?.userData?.attachmentType,
-        faceId: selectedPoint?.userData?.faceId,
-        holeCount: selectedPoint?.userData?.holeCount,
-        attachmentName: selectedPoint?.userData?.attachmentName,
-        fileName: fileName
-    });
+    // console.log('Selected attachment point:', {
+    //     attachmentType: selectedPoint?.userData?.attachmentType,
+    //     faceId: selectedPoint?.userData?.faceId,
+    //     holeCount: selectedPoint?.userData?.holeCount,
+    //     attachmentName: selectedPoint?.userData?.attachmentName,
+    //     fileName: fileName
+    // });
 
     try {
         // Show loading state
@@ -375,9 +375,23 @@ async function attachModelAtPoint(modelPath) {
             return;
         }
 
-        // Check if this is an assembly reference
-        if (attachGeometryData.isAssemblyReference) {
-            console.log('Assembly reference detected, loading assembly instead of single model');
+        // Check if this is an assembly reference (check both isAssemblyReference flag and assemblyFile field)
+        if (attachGeometryData.isAssemblyReference || attachGeometryData.assemblyFile) {
+            // console.log('Assembly reference detected, checking for variants...');
+
+            // Check for +N variants to find all assemblies using this STL
+            const assemblyVariants = await findAssemblyVariants(modelPath, attachGeometryData);
+
+            if (assemblyVariants.length > 1) {
+                // Multiple assemblies found - show them in the menu like a subfolder
+                // console.log(`Found ${assemblyVariants.length} assembly variants`);
+                showAssemblyVariantsInMenu(assemblyVariants, selectedPoint, baseGeometryData, modelPath);
+                document.body.style.cursor = 'default';
+                return;
+            }
+
+            // Single assembly (current behavior)
+            console.log('Single assembly found, loading directly');
 
             // Remove existing model if present
             if (attachedModels.has(selectedPoint)) {
@@ -485,17 +499,17 @@ async function attachModelAtPoint(modelPath) {
                 // Create points if this isn't a secondary attachment OR if it's a riser
                 if (!menuConfig?.parentType || modelPath.toLowerCase().includes('riser')) {
                     createSecondaryAttachmentPoints(mesh).then(() => {
-                        console.log('Secondary attachment points created for', attachmentType);
+                        // console.log('Secondary attachment points created for', attachmentType);
                     });
                 }
 
                 // Hide the menu
                 hideMenu();
                 
-                console.log(`Successfully attached ${modelPath} to ${attachmentType} point`);
+                // console.log(`Successfully attached ${modelPath} to ${attachmentType} point`);
             },
             function (progress) {
-                console.log('Loading progress:', (progress.loaded / progress.total) * 100 + '%');
+                // console.log('Loading progress:', (progress.loaded / progress.total) * 100 + '%');
             },
             function (error) {
                 console.error('Error loading model:', error);
@@ -516,7 +530,7 @@ function alignPartCoolingModel(mesh, attachPoint, baseGeometryData, attachGeomet
         return;
     }
 
-    console.log('🔧 Part Cooling Alignment: Starting alignment process');
+    // console.log('🔧 Part Cooling Alignment: Starting alignment process');
 
     // Set the global current attachment path for pattern matching
     window.currentAttachmentPath = mesh.userData.modelPath;
@@ -540,13 +554,13 @@ function alignPartCoolingModel(mesh, attachPoint, baseGeometryData, attachGeomet
         attachGeometryData.orientationFace.normal.y,
         attachGeometryData.orientationFace.normal.z
     );
-    console.log('🔧 Orientation face normal (before):', attachOrientation);
+    // console.log('🔧 Orientation face normal (before):', attachOrientation);
 
     const isDualDuct = attachGeometryData.slideFaces.length > 1;
     const isRightSide = attachPoint.userData.attachmentName?.includes('opposite');
 
-    console.log('🔧 Part cooling type:', isDualDuct ? 'Dual duct' : 'Single duct');
-    console.log('🔧 Side:', isRightSide ? 'Right' : 'Left');
+    // console.log('🔧 Part cooling type:', isDualDuct ? 'Dual duct' : 'Single duct');
+    // console.log('🔧 Side:', isRightSide ? 'Right' : 'Left');
 
     if (isDualDuct) {
         // Mark patterns as used for dual duct (exact copy from working version)
@@ -680,20 +694,20 @@ function alignPartCoolingModel(mesh, attachPoint, baseGeometryData, attachGeomet
             attachFaceCenter2.clone().multiplyScalar(0.4)
         );
 
-        console.log('🔧 DEBUG: Base group index:', baseGroupIndex);
-        console.log('🔧 DEBUG: Base face 1 position:', baseFaceCenter1.x.toFixed(2), baseFaceCenter1.y.toFixed(2), baseFaceCenter1.z.toFixed(2));
-        console.log('🔧 DEBUG: Base face 2 position:', baseFaceCenter2.x.toFixed(2), baseFaceCenter2.y.toFixed(2), baseFaceCenter2.z.toFixed(2));
-        console.log('🔧 DEBUG: Base weighted center:', baseCenterWeighted.x.toFixed(2), baseCenterWeighted.y.toFixed(2), baseCenterWeighted.z.toFixed(2));
-        console.log('🔧 DEBUG: Attach face 1 position:', attachFaceCenter1.x.toFixed(2), attachFaceCenter1.y.toFixed(2), attachFaceCenter1.z.toFixed(2));
-        console.log('🔧 DEBUG: Attach face 2 position:', attachFaceCenter2.x.toFixed(2), attachFaceCenter2.y.toFixed(2), attachFaceCenter2.z.toFixed(2));
-        console.log('🔧 DEBUG: Attach weighted center:', attachCenterWeighted.x.toFixed(2), attachCenterWeighted.y.toFixed(2), attachCenterWeighted.z.toFixed(2));
+        // console.log('🔧 DEBUG: Base group index:', baseGroupIndex);
+        // console.log('🔧 DEBUG: Base face 1 position:', baseFaceCenter1.x.toFixed(2), baseFaceCenter1.y.toFixed(2), baseFaceCenter1.z.toFixed(2));
+        // console.log('🔧 DEBUG: Base face 2 position:', baseFaceCenter2.x.toFixed(2), baseFaceCenter2.y.toFixed(2), baseFaceCenter2.z.toFixed(2));
+        // console.log('🔧 DEBUG: Base weighted center:', baseCenterWeighted.x.toFixed(2), baseCenterWeighted.y.toFixed(2), baseCenterWeighted.z.toFixed(2));
+        // console.log('🔧 DEBUG: Attach face 1 position:', attachFaceCenter1.x.toFixed(2), attachFaceCenter1.y.toFixed(2), attachFaceCenter1.z.toFixed(2));
+        // console.log('🔧 DEBUG: Attach face 2 position:', attachFaceCenter2.x.toFixed(2), attachFaceCenter2.y.toFixed(2), attachFaceCenter2.z.toFixed(2));
+        // console.log('🔧 DEBUG: Attach weighted center:', attachCenterWeighted.x.toFixed(2), attachCenterWeighted.y.toFixed(2), attachCenterWeighted.z.toFixed(2));
 
         // Apply quaternion to attachment center (from live_app.js)
         const transformedAttachCenter = attachCenterWeighted.clone().applyQuaternion(mesh.quaternion);
         const offset = baseCenterWeighted.clone().sub(transformedAttachCenter);
 
-        console.log('🔧 DEBUG: Transformed attach center:', transformedAttachCenter.x.toFixed(2), transformedAttachCenter.y.toFixed(2), transformedAttachCenter.z.toFixed(2));
-        console.log('🔧 DEBUG: Final offset:', offset.x.toFixed(2), offset.y.toFixed(2), offset.z.toFixed(2));
+        // console.log('🔧 DEBUG: Transformed attach center:', transformedAttachCenter.x.toFixed(2), transformedAttachCenter.y.toFixed(2), transformedAttachCenter.z.toFixed(2));
+        // console.log('🔧 DEBUG: Final offset:', offset.x.toFixed(2), offset.y.toFixed(2), offset.z.toFixed(2));
 
         // Check if right side needs 180° rotation - AFTER all normals are defined (from working version)
         if (isRightSide) {
@@ -715,7 +729,7 @@ function alignPartCoolingModel(mesh, attachPoint, baseGeometryData, attachGeomet
         mesh.position.copy(offset);
     }
 
-    console.log('🔧 Part Cooling Alignment Complete');
+    // console.log('🔧 Part Cooling Alignment Complete');
 }
 
 function alignProbeModel(mesh, attachPoint, baseGeometryData, attachGeometryData) {
@@ -798,12 +812,12 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
         const attachGroup = attachGeometryData.slideFaces[0];
 
         // First align orientations to sky
-        console.log('🔧 PROBE DEBUG: attachOrientation:', attachOrientation);
-        console.log('🔧 PROBE DEBUG: upVector:', upVector);
+        // console.log('🔧 PROBE DEBUG: attachOrientation:', attachOrientation);
+        // console.log('🔧 PROBE DEBUG: upVector:', upVector);
         const orientQuat = new THREE.Quaternion();
         orientQuat.setFromUnitVectors(attachOrientation, upVector);
         mesh.quaternion.copy(orientQuat);
-        console.log('🔧 PROBE DEBUG: orientation quaternion:', orientQuat);
+        // console.log('🔧 PROBE DEBUG: orientation quaternion:', orientQuat);
 
         // Then align slide face normals
         const baseNormal = new THREE.Vector3(
@@ -849,7 +863,7 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
         return;
     }
     
-    console.log(`Using assigned face ${closestFace.faceId} with ${closestFace.holes?.length || 0} holes for ${attachPoint.userData.attachmentType}`);
+    // console.log(`Using assigned face ${closestFace.faceId} with ${closestFace.holes?.length || 0} holes for ${attachPoint.userData.attachmentType}`);
 
     const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, attachPoint.userData.attachmentType);
     if (!matchingFace) {
@@ -865,11 +879,11 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
         closestFace.normal.z
     );
 
-    console.log('🔧 DEBUG: Attachment point position:', attachPoint.position);
-    console.log('🔧 DEBUG: Face center from holes:', baseCenter);
-    console.log('🔧 DEBUG: Face normal:', baseNormal);
-    console.log('🔧 DEBUG: Attachment type:', attachPoint.userData.attachmentType);
-    console.log('🔧 DEBUG: Parent model:', attachPoint.userData.parentModel);
+    // console.log('🔧 DEBUG: Attachment point position:', attachPoint.position);
+    // console.log('🔧 DEBUG: Face center from holes:', baseCenter);
+    // console.log('🔧 DEBUG: Face normal:', baseNormal);
+    // console.log('🔧 DEBUG: Attachment type:', attachPoint.userData.attachmentType);
+    // console.log('🔧 DEBUG: Parent model:', attachPoint.userData.parentModel);
 
     // Handle specific attachment type alignments - EXACT LOGIC FROM OLD_APP.JS
     if (attachPoint.userData.attachmentType === 'hotend' ||
@@ -903,23 +917,23 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
             const orientRotation = attachGeometryData.orientationFace.rotation;
 
-            if (hasEnhancedData) {
-                console.log('🟢 ENHANCED DATA: Using enhanced face data with position and dimensions for', mesh.userData.modelPath);
-                console.log('🟢 Enhanced data check:', {
-                    orientationFacePosition: !!attachGeometryData.orientationFace.position,
-                    orientationFaceDimensions: !!attachGeometryData.orientationFace.dimensions,
-                    frontFacePosition: !!attachGeometryData.frontFace.position,
-                    frontFaceDimensions: !!attachGeometryData.frontFace.dimensions
-                });
-            } else {
-                console.log('🔴 LEGACY DATA: Using legacy face data (normal + rotation only) for', mesh.userData.modelPath);
-                console.log('🔴 Enhanced data check:', {
-                    orientationFacePosition: !!attachGeometryData.orientationFace?.position,
-                    orientationFaceDimensions: !!attachGeometryData.orientationFace?.dimensions,
-                    frontFacePosition: !!attachGeometryData.frontFace?.position,
-                    frontFaceDimensions: !!attachGeometryData.frontFace?.dimensions
-                });
-            }
+            // if (hasEnhancedData) {
+            //     console.log('🟢 ENHANCED DATA: Using enhanced face data with position and dimensions for', mesh.userData.modelPath);
+            //     console.log('🟢 Enhanced data check:', {
+            //         orientationFacePosition: !!attachGeometryData.orientationFace.position,
+            //         orientationFaceDimensions: !!attachGeometryData.orientationFace.dimensions,
+            //         frontFacePosition: !!attachGeometryData.frontFace.position,
+            //         frontFaceDimensions: !!attachGeometryData.frontFace.dimensions
+            //     });
+            // } else {
+            //     console.log('🔴 LEGACY DATA: Using legacy face data (normal + rotation only) for', mesh.userData.modelPath);
+            //     console.log('🔴 Enhanced data check:', {
+            //         orientationFacePosition: !!attachGeometryData.orientationFace?.position,
+            //         orientationFaceDimensions: !!attachGeometryData.orientationFace?.dimensions,
+            //         frontFacePosition: !!attachGeometryData.frontFace?.position,
+            //         frontFaceDimensions: !!attachGeometryData.frontFace?.dimensions
+            //     });
+            // }
             
             // Define target vectors
             const targetUp = new THREE.Vector3(0, 0, 1);
@@ -954,7 +968,7 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
                     attachPoint.userData.attachmentType === 'directdrive' ||
                     attachPoint.userData.attachmentType === 'hotend') {
 
-                    console.log('🎯 ENHANCED ALIGNMENT: Using simplified enhanced alignment for', attachPoint.userData.attachmentType);
+                    // console.log('🎯 ENHANCED ALIGNMENT: Using simplified enhanced alignment for', attachPoint.userData.attachmentType);
 
                     // Make orientation face normal always point up (global +Z), regardless of JSON
                     const parentModel = attachPoint.userData.parentModel || mainModel;
@@ -1008,7 +1022,7 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
                 } else {
                     // Enhanced alignment for other attachment types (use same logic as spacer/directdrive/hotend)
-                    console.log('🎯 ENHANCED ALIGNMENT (CATCH-ALL): Using enhanced alignment for attachment type:', attachPoint.userData.attachmentType);
+                    // console.log('🎯 ENHANCED ALIGNMENT (CATCH-ALL): Using enhanced alignment for attachment type:', attachPoint.userData.attachmentType);
 
                     // Step 1: Align the mounting face normals (holes face to face)
                     const mountingNormal = new THREE.Vector3(
@@ -1057,7 +1071,7 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
             } else {
                 // Legacy alignment logic (backwards compatibility)
-                console.log('🔴 LEGACY ALIGNMENT: Using legacy alignment for', attachPoint.userData.attachmentType, 'on model', mesh.userData.modelPath);
+                // console.log('🔴 LEGACY ALIGNMENT: Using legacy alignment for', attachPoint.userData.attachmentType, 'on model', mesh.userData.modelPath);
                 
                 if (attachPoint.userData.attachmentType === 'spacer' || attachPoint.userData.attachmentType === 'directdrive') {
                     // Do normal orientation and alignment first
@@ -1195,9 +1209,9 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
         } else if (attachPoint.userData.attachmentType === 'fanguard') {
             // Fan guard alignment - EXACT copy from working OLD/app.js
-            console.log('🔧 Fan guard - Base face ID:', attachPoint.userData.faceId);
-            console.log('🔧 Fan guard - Base center:', baseCenter);
-            console.log('🔧 Fan guard - Base normal:', baseNormal);
+            // console.log('🔧 Fan guard - Base face ID:', attachPoint.userData.faceId);
+            // console.log('🔧 Fan guard - Base center:', baseCenter);
+            // console.log('🔧 Fan guard - Base normal:', baseNormal);
             const attachOrientation = new THREE.Vector3(
                 attachGeometryData.orientationFace.normal.x,
                 attachGeometryData.orientationFace.normal.y,
@@ -1343,7 +1357,7 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
         } else if (attachPoint.userData.attachmentType === 'wing') {
             // Wing alignment - EXACT copy of backup alignment from OLD/app.js
-            console.log('🚨🚨🚨 USING BACKUP ALIGNMENT (for wings)');
+            // console.log('🚨🚨🚨 USING BACKUP ALIGNMENT (for wings)');
 
             const attachOrientation = new THREE.Vector3(
                 attachGeometryData.orientationFace.normal.x,
@@ -1596,6 +1610,148 @@ function removeModel(model) {
     }
 }
 
+// Find all assembly variants for a given STL (check for +N JSONs)
+async function findAssemblyVariants(modelPath, baseJsonData) {
+    const variants = [];
+    const basePath = modelPath.replace('.stl', '');
+    const directory = modelPath.substring(0, modelPath.lastIndexOf('/') + 1);
+
+    // Start with the base JSON (already loaded, passed as parameter)
+    if (baseJsonData && baseJsonData.assemblyFile) {
+        try {
+            const assemblyData = await loadAssemblyData(baseJsonData.assemblyFile, modelPath);
+            if (assemblyData) {
+                variants.push({
+                    jsonPath: `${basePath}.json`,
+                    assemblyReference: baseJsonData,
+                    assemblyData: assemblyData,
+                    name: assemblyData.assemblyName || 'Default Assembly'
+                });
+                console.log('Added base assembly variant:', assemblyData.assemblyName);
+            }
+        } catch (error) {
+            console.log('Error loading base assembly:', error);
+        }
+    }
+
+    // Check for +1, +2, +3, etc.
+    let counter = 1;
+    let keepChecking = true;
+
+    while (keepChecking) {
+        try {
+            const variantJsonPath = `${basePath}+${counter}.json`;
+            const response = await fetch(variantJsonPath);
+
+            if (response.ok) {
+                const jsonData = await response.json();
+                if (jsonData.assemblyFile) {
+                    // Load the assembly to get its name
+                    const assemblyData = await loadAssemblyData(jsonData.assemblyFile, modelPath);
+                    if (assemblyData) {
+                        variants.push({
+                            jsonPath: variantJsonPath,
+                            assemblyReference: jsonData,
+                            assemblyData: assemblyData,
+                            name: assemblyData.assemblyName || `Assembly ${counter + 1}`
+                        });
+                        console.log('Added +' + counter + ' assembly variant:', assemblyData.assemblyName);
+                    }
+                }
+                counter++;
+            } else {
+                // No more variants found
+                keepChecking = false;
+            }
+        } catch (error) {
+            keepChecking = false;
+        }
+    }
+
+    // console.log(`Found ${variants.length} assembly variant(s) for ${modelPath}`);
+    return variants;
+}
+
+// Show assembly variants in the existing menu system (like a subfolder)
+function showAssemblyVariantsInMenu(variants, attachPoint, baseGeometryData, modelPath) {
+    // Store the variants data globally so the menu click handlers can access it
+    window.assemblyVariantsData = {
+        variants: variants,
+        attachPoint: attachPoint,
+        baseGeometryData: baseGeometryData,
+        modelPath: modelPath
+    };
+
+    // Create a virtual folder structure for the menu
+    const menuElement = document.getElementById('modelSelect');
+
+    let html = `
+        <div class="menu-container">
+            <div class="menu-header">
+                <button class="back-button" onclick="event.stopPropagation(); navigateBack()">
+                    <span class="back-arrow"></span>
+                    <span>Back</span>
+                </button>
+            </div>
+            <div class="menu-content">`;
+
+    // Add each assembly variant as a menu item
+    variants.forEach((variant, index) => {
+        html += `
+            <div class="menu-item file" onclick="event.stopPropagation(); selectAssemblyVariant(${index})">
+                <i class="fas fa-cubes" style="color: #a785d9; margin-right: 8px;"></i>
+                <span class="file-name">${variant.name}</span>
+            </div>`;
+    });
+
+    html += `
+            </div>
+        </div>`;
+
+    menuElement.innerHTML = html;
+}
+
+// Handle selection of a specific assembly variant
+async function selectAssemblyVariant(variantIndex) {
+    const data = window.assemblyVariantsData;
+    if (!data || !data.variants[variantIndex]) {
+        console.error('Assembly variant data not found');
+        return;
+    }
+
+    const variant = data.variants[variantIndex];
+    const attachPoint = data.attachPoint;
+    const baseGeometryData = data.baseGeometryData;
+    const modelPath = data.modelPath;
+
+    // Remove existing model if present
+    if (attachedModels.has(attachPoint)) {
+        const oldModel = attachedModels.get(attachPoint);
+        if (oldModel.userData.modelPath) {
+            resetPatterns(oldModel.userData.modelPath);
+        }
+        scene.remove(oldModel);
+        attachedModels.delete(attachPoint);
+    }
+
+    // Attach the selected assembly
+    const assembly = await attachAssemblyAtPoint(
+        variant.assemblyReference,
+        attachPoint,
+        baseGeometryData,
+        modelPath
+    );
+
+    if (assembly) {
+        hideMenu();
+        console.log('Assembly attached successfully:', variant.name);
+    }
+
+    // Clean up
+    delete window.assemblyVariantsData;
+    document.body.style.cursor = 'default';
+}
+
 // Export functions for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
@@ -1608,6 +1764,9 @@ if (typeof module !== 'undefined' && module.exports) {
         alignGenericModel,
         alignSecondaryModel,
         createSecondaryAttachmentPoints,
-        removeModel
+        removeModel,
+        findAssemblyVariants,
+        showAssemblyVariantsInMenu,
+        selectAssemblyVariant
     };
 }

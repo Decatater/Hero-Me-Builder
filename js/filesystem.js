@@ -55,6 +55,35 @@ function showUserError(message) {
     }, 5000);
 }
 
+// Show user-visible success message
+function showUserSuccess(message) {
+    // Create success message element
+    const successDiv = document.createElement('div');
+    successDiv.className = 'success-message';
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+    successDiv.textContent = message;
+
+    document.body.appendChild(successDiv);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (successDiv.parentNode) {
+            successDiv.parentNode.removeChild(successDiv);
+        }
+    }, 3000);
+}
+
 async function loadGeometryData(modelPath) {
     const jsonPath = modelPath.replace('.stl', '.json');
     try {
@@ -67,11 +96,11 @@ async function loadGeometryData(modelPath) {
             return null;
         }
         const data = await response.json();
-        console.log('Loaded JSON data:', data);
+        // console.log('Loaded JSON data:', data);
 
         // Check if this is an assembly reference
         if (data.assemblyFile) {
-            console.log('Assembly reference detected:', data.assemblyFile);
+            // console.log('Assembly reference detected:', data.assemblyFile);
             data.isAssemblyReference = true;
         }
 
@@ -117,11 +146,11 @@ function findDirectoryByPath(paths, structure) {
         paths = [paths];
     }
 
-    console.log('Finding directories for paths:', paths);
-    
+    // console.log('Finding directories for paths:', paths);
+
     // Unwrap the outer array - this is the key fix
     const actualStructure = Array.isArray(structure) && structure.length === 1 ? structure[0] : structure;
-    console.log('Searching in structure:', actualStructure);
+    // console.log('Searching in structure:', actualStructure);
 
     // Filter out any undefined paths
     const validPaths = paths.filter(path => path);
@@ -131,7 +160,7 @@ function findDirectoryByPath(paths, structure) {
     }
 
     const normalizedSearchPaths = validPaths.map(path => normalizePath(path));
-    console.log('Normalized search paths:', normalizedSearchPaths);
+    // console.log('Normalized search paths:', normalizedSearchPaths);
     
     let allContents = [];
 
@@ -147,15 +176,15 @@ function findDirectoryByPath(paths, structure) {
             }
             
             const normalizedItemPath = normalizePath(item.path);
-            console.log('Comparing paths:', {
-                searchPath,
-                itemPath: normalizedItemPath,
-                match: normalizedItemPath === searchPath
-            });
+            // console.log('Comparing paths:', {
+            //     searchPath,
+            //     itemPath: normalizedItemPath,
+            //     match: normalizedItemPath === searchPath
+            // });
 
             if (item.type === 'directory') {
                 if (normalizedItemPath === searchPath) {
-                    console.log('Found matching directory:', item);
+                    // console.log('Found matching directory:', item);
                     // Found the target directory, return its children
                     return item.children || [];
                 }
@@ -172,7 +201,7 @@ function findDirectoryByPath(paths, structure) {
     normalizedSearchPaths.forEach(searchPath => {
         const contents = search(actualStructure, searchPath);
         if (contents) {
-            console.log('Found contents for path', searchPath, ':', contents);
+            // console.log('Found contents for path', searchPath, ':', contents);
             allContents = [...allContents, ...contents];
         } else {
             console.log('No contents found for path:', searchPath);
@@ -200,7 +229,7 @@ function getFilesFromCache(targetFolder) {
             console.log('Checking path:', normalizedPath, 'against target:', normalizedTarget);
 
             if (item.type === 'directory' && normalizedPath === normalizedTarget) {
-                console.log('Found matching directory:', item);
+                // console.log('Found matching directory:', item);
                 return item.children
                     .filter(child => child.type === 'file' && child.name.toLowerCase().endsWith('.stl'))
                     .map(child => child.name);
@@ -240,7 +269,7 @@ async function getFileList(targetFolder) {
 
                 // If we found our target directory, return its STL files
                 if (item.type === 'directory' && normalizedItemPath === normalizedTargetPath) {
-                    console.log('Found matching directory:', item.path);
+                    // console.log('Found matching directory:', item.path);
                     console.log('Directory contents:', item.children);
 
                     const stlFiles = item.children
@@ -277,13 +306,17 @@ function createFolderId(path) {
 // Menu content and navigation functions
 function updateMenuContent(menuElement) {
     const current = currentMenuPath[currentMenuPath.length - 1];
-    if (!current || !current.folder) return;
+    // console.log('updateMenuContent called, current:', current);
+    if (!current || !current.folder) {
+        // console.log('No current or no folder, returning');
+        return;
+    }
 
     let html = `
         <div class="menu-container">
             <div class="menu-header">
                 ${currentMenuPath.length > 1 ?
-            `<button class="back-button" onclick="navigateBack()">
+            `<button class="back-button" onclick="event.stopPropagation(); navigateBack()">
                         <span class="back-arrow"></span>
                         <span>Back</span>
                      </button>` :
@@ -301,11 +334,11 @@ function updateMenuContent(menuElement) {
             });
 
             const isCustomFolder = dir.customData.title.toLowerCase().includes('custom');
-            const iconClass = isCustomFolder ? 'custom-star-icon' : 'folder-icon';
+            const icon = isCustomFolder ? '<i class="fas fa-star" style="color: #ffd700; margin-right: 8px;"></i>' : '<i class="fas fa-folder" style="color: #ffd966; margin-right: 8px;"></i>';
 
             html += `
                 <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
-                    <span class="${iconClass}"></span>
+                    ${icon}
                     ${dir.customData.title}
                 </div>`;
         });
@@ -337,11 +370,11 @@ function updateMenuContent(menuElement) {
             });
 
             const isCustomFolder = dir.name.toLowerCase().includes('custom');
-            const iconClass = isCustomFolder ? 'custom-star-icon' : 'folder-icon';
+            const icon = isCustomFolder ? '<i class="fas fa-star" style="color: #ffd700; margin-right: 8px;"></i>' : '<i class="fas fa-folder" style="color: #ffd966; margin-right: 8px;"></i>';
 
             html += `
                 <div class="menu-item folder" onclick="event.stopPropagation(); navigateToFolder('${folderId}')">
-                    <span class="${iconClass}"></span>
+                    ${icon}
                     ${dir.name}
                 </div>`;
         });
@@ -356,7 +389,7 @@ function updateMenuContent(menuElement) {
             const fullPath = `${current.basePath}/${file.name}`.replace(/^\/+/, '');
             html += `
                 <div class="menu-item file" onclick="event.stopPropagation(); attachModelAtPoint('${fullPath}')">
-                    <span class="file-icon"></span>
+                    <i class="fas fa-cube" style="color: #6c9bd1; margin-right: 8px;"></i>
                     <span class="file-name">${file.name.replace('.stl', '')}</span>
                 </div>`;
         });
@@ -458,11 +491,23 @@ function navigateToFolder(folderId) {
 }
 
 function navigateBack() {
+    // console.log('navigateBack called, currentMenuPath length:', currentMenuPath.length);
+    // console.log('currentMenuPath:', currentMenuPath);
+
     if (currentMenuPath.length > 1) {
         currentMenuPath.pop();
+        // console.log('Popped, new length:', currentMenuPath.length);
+        // console.log('New current path:', currentMenuPath[currentMenuPath.length - 1]);
         const menuElement = document.getElementById('modelSelect');
+        // console.log('Menu element:', menuElement);
         updateMenuContent(menuElement);
+        // console.log('After updateMenuContent, display:', menuElement.style.display);
         menuElement.style.display = 'block'; // Ensure menu stays visible
+        // console.log('Forced display to block');
+    } else {
+        // At root level - close the menu
+        // console.log('At root or empty, closing menu');
+        hideMenu();
     }
 }
 
@@ -470,7 +515,7 @@ function navigateBack() {
 async function createDropdownForType(type) {
     // Use the original type if it exists, otherwise use the current type
     const menuType = selectedPoint?.userData?.originalType || type;
-    console.log('Creating menu for type:', menuType);
+    // console.log('Creating menu for type:', menuType);
 
     menuState.clear();
     const menu = categoryMenus[menuType];
@@ -479,10 +524,10 @@ async function createDropdownForType(type) {
         return '';
     }
 
-    console.log('Found menu config:', menu);
+    // console.log('Found menu config:', menu);
 
     if (menu.isCustomMenu) {
-        console.log('Creating custom menu');
+        // console.log('Creating custom menu');
         const customMenu = menu.createCustomMenu(selectedPoint?.userData);
         if (customMenu.type === 'category') {
             currentMenuPath = [{
@@ -498,11 +543,11 @@ async function createDropdownForType(type) {
         }
     } else {
         // Original directory-based menu code
-        console.log('Creating directory-based menu with path:', menu.paths[0]);
-        console.log('Current directory structure:', directoryStructure);
-        
+        // console.log('Creating directory-based menu with path:', menu.paths[0]);
+        // console.log('Current directory structure:', directoryStructure);
+
         const directory = findDirectoryByPath(menu.paths[0], directoryStructure);
-        console.log('Directory search result:', directory);
+        // console.log('Directory search result:', directory);
 
         if (!directory) {
             console.error('No directory found for path:', menu.paths[0]);
@@ -512,8 +557,8 @@ async function createDropdownForType(type) {
         const filteredContents = menu.filter ?
             filterContents(directory, selectedPoint?.userData) :
             directory;
-            
-        console.log('Filtered contents:', filteredContents);
+
+        // console.log('Filtered contents:', filteredContents);
 
         currentMenuPath = [{
             folder: filteredContents,
@@ -522,7 +567,7 @@ async function createDropdownForType(type) {
         }];
     }
 
-    console.log('Current menu path:', currentMenuPath);
+    // console.log('Current menu path:', currentMenuPath);
 
     const menuElement = document.createElement('div');
     updateMenuContent(menuElement);
@@ -556,6 +601,8 @@ if (typeof module !== 'undefined' && module.exports) {
         navigateToFolder,
         navigateBack,
         createDropdownForType,
-        filterContents
+        filterContents,
+        showUserError,
+        showUserSuccess
     };
 }

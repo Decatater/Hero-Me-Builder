@@ -158,7 +158,9 @@
         <h1 class="header-with-button">Hero Me Builder Changelog</h1>
         <!--BELOW: Define Tabs-->
         <div class="tab-container">
-            <div class="tab active" onclick="openTab(event, 'v021')">v0.2.1</div>
+            <div class="tab active" onclick="openTab(event, 'v023')">v0.2.3</div>
+            <div class="tab" onclick="openTab(event, 'v022')">v0.2.2</div>
+            <div class="tab" onclick="openTab(event, 'v021')">v0.2.1</div>
             <div class="tab" onclick="openTab(event, 'v020')">v0.2.0</div>
             <div class="tab" onclick="openTab(event, 'v019')">v0.1.9</div>
             <div class="tab" onclick="openTab(event, 'v018')">v0.1.8</div>
@@ -171,7 +173,33 @@
             <div class="tab" onclick="openTab(event, 'v011')">v0.1.1</div>
         </div>
         <!--BELOW: Define Each Tabs Contents-->
-        <div id="v021" class="tab-content active">
+        <div id="v023" class="tab-content active">
+            <h2>Version 0.2.3 BETA - October 13 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Multi-assembly support - Parts used in multiple assemblies now show a menu to select which assembly to build</li>
+                <li><span class="category">Added:</span> Assembly selection menu integrated into normal navigation - choose between assembly variants just like browsing folders</li>
+                <li><span class="category">Added:</span> Load Build now accepts both ZIP files and standalone JSON files for easier sharing</li>
+                <li><span class="category">Improved:</span> Assembly alignment now automatically uses correct logic based on part type (gantry adapters, hotends, direct drives, etc.)</li>
+                <li><span class="category">Improved:</span> Menu icons now use Font Awesome for better compatibility and appearance</li>
+                <li><span class="category">Improved:</span> Build load success now shows as a green notification instead of a browser popup</li>
+                <li><span class="category">Fixed:</span> Back button in part menus now properly navigates through folders instead of closing immediately</li>
+                <li><span class="category">Fixed:</span> Menu navigation state is now correctly maintained when browsing through subfolders</li>
+                <li><span class="category">Fixed:</span> Load Build button no longer appears twice on mobile devices</li>
+            </ul>
+        </div>
+
+        <div id="v022" class="tab-content">
+            <h2>Version 0.2.2 BETA - October 11 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> JSON Coverage Tracker - New page showing which parts still need alignment data for the builder</li>
+                <li><span class="category">Added:</span> "View Details" button in the Part Coverage stats box for easy access to the tracker</li>
+                <li><span class="category">Added:</span> Organized folder view in tracker - click to expand and see missing parts by category</li>
+                <li><span class="category">Improved:</span> JSON tracker now loads much faster by caching data between visits</li>
+                <li><span class="category">Added:</span> Refresh button in tracker to update data after new parts are added</li>
+            </ul>
+        </div>
+
+        <div id="v021" class="tab-content">
             <h2>Version 0.2.1 BETA - October 7 2025</h2>
             <ul>
                 <li><span class="category">Added:</span> Save and Load Build feature - Export builds as ZIP files containing a build.json that allows you to load and reconstruct complete assemblies later</li>

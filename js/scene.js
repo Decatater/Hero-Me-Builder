@@ -545,12 +545,12 @@ async function downloadSceneAsZip() {
     URL.revokeObjectURL(url);
 }
 
-// Load a build from a zip file
+// Load a build from a zip file or JSON file
 async function loadBuildFromZip() {
     // Create file input
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.zip';
+    input.accept = '.zip,.json';
 
     input.onchange = async (e) => {
         const file = e.target.files[0];
@@ -577,22 +577,41 @@ async function loadBuildFromZip() {
         document.body.appendChild(overlay);
 
         try {
-            console.log('Loading build from zip:', file.name);
+            let buildData;
 
-            // Read the zip file
-            const zip = await JSZip.loadAsync(file);
+            // Check if it's a JSON file or ZIP file
+            if (file.name.toLowerCase().endsWith('.json')) {
+                console.log('Loading build from JSON:', file.name);
 
-            // Extract build.json
-            const buildJsonFile = zip.file('build.json');
-            if (!buildJsonFile) {
-                alert('This zip file does not contain a build.json file. Please select a valid Hero Me Builder export.');
-                return;
+                // Read JSON file directly
+                const reader = new FileReader();
+                const jsonText = await new Promise((resolve, reject) => {
+                    reader.onload = (event) => resolve(event.target.result);
+                    reader.onerror = reject;
+                    reader.readAsText(file);
+                });
+
+                buildData = JSON.parse(jsonText);
+                console.log('Build data loaded from JSON:', buildData);
+
+            } else {
+                console.log('Loading build from zip:', file.name);
+
+                // Read the zip file
+                const zip = await JSZip.loadAsync(file);
+
+                // Extract build.json
+                const buildJsonFile = zip.file('build.json');
+                if (!buildJsonFile) {
+                    showUserError('This zip file does not contain a build.json file. Please select a valid Hero Me Builder export.');
+                    document.body.removeChild(overlay);
+                    return;
+                }
+
+                const buildJsonText = await buildJsonFile.async('text');
+                buildData = JSON.parse(buildJsonText);
+                console.log('Build data loaded from ZIP:', buildData);
             }
-
-            const buildJsonText = await buildJsonFile.async('text');
-            const buildData = JSON.parse(buildJsonText);
-
-            console.log('Build data loaded:', buildData);
 
             // Clear current build first
             const modelsToRemove = Array.from(attachedModels.entries());
@@ -629,7 +648,7 @@ async function loadBuildFromZip() {
             // Remove overlay
             document.body.removeChild(overlay);
 
-            alert('Build loaded successfully!');
+            showUserSuccess('Build loaded successfully!');
 
         } catch (error) {
             console.error('Error loading build:', error);
@@ -639,7 +658,7 @@ async function loadBuildFromZip() {
                 document.body.removeChild(overlay);
             }
 
-            alert('Error loading build: ' + error.message);
+            showUserError('Error loading build: ' + error.message);
         }
     };
 

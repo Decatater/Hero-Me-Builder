@@ -455,7 +455,7 @@ async function onMouseClick(event) {
 
         // Create and show the attachment menu
         const attachmentType = selectedPoint.userData.attachmentType;
-        console.log('Clicked attachment point:', attachmentType);
+        // console.log('Clicked attachment point:', attachmentType);
         
         try {
             const menuContent = await createDropdownForType(attachmentType);

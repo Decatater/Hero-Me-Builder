@@ -74,6 +74,7 @@ function createDownloadButton() {
 function createLoadBuildButton() {
     const loadButton = document.createElement('button');
     loadButton.textContent = 'Load Build';
+    loadButton.className = 'desktop-only-button';
     loadButton.style.position = 'fixed';
     loadButton.style.bottom = '70px'; // Position above download button
     loadButton.style.right = '20px';

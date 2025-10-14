@@ -100,7 +100,7 @@ function calculateHolePatternCenter(holes) {
 // Pattern matching functions
 function compareHolePatterns(face1, face2, isRiser = false) {
     if (!face1?.holes?.length || !face2?.holes?.length) {
-        console.log('Missing holes in one or both faces');
+        // console.log('Missing holes in one or both faces');
         return 0;
     }
 
@@ -110,13 +110,13 @@ function compareHolePatterns(face1, face2, isRiser = false) {
         const tolerance = 1.0; // 1mm tolerance for hole diameters
         const diameterDiff = Math.abs(face1.holes[0].diameter - face2.holes[0].diameter);
         const score = diameterDiff <= tolerance ? 1.0 : 0.0;
-        console.log(`Single hole comparison - diameters: ${face1.holes[0].diameter} vs ${face2.holes[0].diameter}, score: ${score}`);
+        // console.log(`Single hole comparison - diameters: ${face1.holes[0].diameter} vs ${face2.holes[0].diameter}, score: ${score}`);
         return score;
     }
 
     // If number of holes doesn't match for multiple holes, patterns can't match
     if (face1.holes.length !== face2.holes.length) {
-        console.log('Different number of holes:', face1.holes.length, 'vs', face2.holes.length);
+        // console.log('Different number of holes:', face1.holes.length, 'vs', face2.holes.length);
         return 0;
     }
 
@@ -124,11 +124,11 @@ function compareHolePatterns(face1, face2, isRiser = false) {
     const distances1 = calculateInterHoleDistances(face1.holes);
     const distances2 = calculateInterHoleDistances(face2.holes);
 
-    console.log('Distances in pattern 1:', distances1);
-    console.log('Distances in pattern 2:', distances2);
+    // console.log('Distances in pattern 1:', distances1);
+    // console.log('Distances in pattern 2:', distances2);
 
     if (distances1.length !== distances2.length) {
-        console.log('Different number of inter-hole distances');
+        // console.log('Different number of inter-hole distances');
         return 0;
     }
 
@@ -185,18 +185,18 @@ function compareHolePatterns(face1, face2, isRiser = false) {
     }
 
     const score = distances1.length > 0 ? bestMatchCount / distances1.length : 1.0;
-    console.log(`Best match score based on distances: ${score} (${bestMatchCount}/${distances1.length} matches)`);
+    // console.log(`Best match score based on distances: ${score} (${bestMatchCount}/${distances1.length} matches)`);
     return score;
 }
 
 function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
     if (!group1.faces || !group2.faces) {
-        console.log('Missing faces in one or both groups');
+        // console.log('Missing faces in one or both groups');
         return 0;
     }
 
     if (group1.faces.length !== group2.faces.length) {
-        console.log('Different number of faces:', group1.faces.length, 'vs', group2.faces.length);
+        // console.log('Different number of faces:', group1.faces.length, 'vs', group2.faces.length);
         return 0;
     }
 
@@ -204,7 +204,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
     if (group1.distances && group2.distances) {
         // Both groups should have same number of distances
         if (group1.distances.length !== group2.distances.length) {
-            console.log('Different number of distances');
+            // console.log('Different number of distances');
             return 0;
         }
 
@@ -219,7 +219,7 @@ function compareSlideFaceGroups(group1, group2, orientQuat1, orientQuat2) {
         }
 
         const score = group1.distances.length > 0 ? distanceScore / group1.distances.length : 1.0;
-        console.log(`Slide face group comparison score: ${score} (${distanceScore}/${group1.distances.length} matches)`);
+        // console.log(`Slide face group comparison score: ${score} (${distanceScore}/${group1.distances.length} matches)`);
         return score;
     }
 
@@ -233,9 +233,9 @@ function calculateAlignment(baseFace, attachFace) {
         return null;
     }
 
-    console.log('Calculating alignment between faces:',
-        'Base:', baseFace,
-        'Attach:', attachFace);
+    // console.log('Calculating alignment between faces:',
+    //     'Base:', baseFace,
+    //     'Attach:', attachFace);
 
     // First align normals
     const baseNormal = new THREE.Vector3(
@@ -305,18 +305,18 @@ function findClosestFace(faces, point) {
 
 // Find matching faces between base and attachment models
 function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
-    console.log('\n=== Finding Matches Between Faces ===');
-    console.log('Base face ID:', baseFace.faceId);
-    console.log('Base face holes:', baseFace.holes.length);
-    console.log('Current model path:', window.currentAttachmentPath);
-    console.log('Attachment type:', attachmentType);
+    // console.log('\n=== Finding Matches Between Faces ===');
+    // console.log('Base face ID:', baseFace.faceId);
+    // console.log('Base face holes:', baseFace.holes.length);
+    // console.log('Current model path:', window.currentAttachmentPath);
+    // console.log('Attachment type:', attachmentType);
 
     // Get the original type if it exists
     const originalType = selectedPoint?.userData?.originalType || attachmentType;
     
     // Handle spacers while preserving original type
     if (window.currentAttachmentPath && window.currentAttachmentPath.toLowerCase().includes('riser')) {
-        console.log('🚨🚨🚨 SPACER IN FINDMATCHINGFACES');
+        // console.log('🚨🚨🚨 SPACER IN FINDMATCHINGFACES');
         // Find first available face with right number of holes
         const attachFace = attachmentFaces.find(face => 
             face.holes?.length === baseFace.holes.length &&
