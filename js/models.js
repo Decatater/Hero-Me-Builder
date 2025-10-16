@@ -361,6 +361,9 @@ async function attachModelAtPoint(modelPath) {
         // Show loading state
         document.body.style.cursor = 'wait';
 
+        // Show loading state in menu
+        showMenuLoading('Loading model data...');
+
         // Set the global current attachment path for pattern matching
         window.currentAttachmentPath = modelPath;
 
@@ -372,6 +375,7 @@ async function attachModelAtPoint(modelPath) {
         if (!baseGeometryData || !attachGeometryData) {
             console.error('Failed to load geometry data - model attachment cancelled');
             document.body.style.cursor = 'default'; // Reset cursor
+            hideMenuLoading();
             return;
         }
 
@@ -379,16 +383,23 @@ async function attachModelAtPoint(modelPath) {
         if (attachGeometryData.isAssemblyReference || attachGeometryData.assemblyFile) {
             // console.log('Assembly reference detected, checking for variants...');
 
+            // Show loading state for assembly scan
+            showMenuLoading('Scanning for assembly variants...');
+
             // Check for +N variants to find all assemblies using this STL
             const assemblyVariants = await findAssemblyVariants(modelPath, attachGeometryData);
 
             if (assemblyVariants.length > 1) {
                 // Multiple assemblies found - show them in the menu like a subfolder
                 // console.log(`Found ${assemblyVariants.length} assembly variants`);
+                hideMenuLoading();
                 showAssemblyVariantsInMenu(assemblyVariants, selectedPoint, baseGeometryData, modelPath);
                 document.body.style.cursor = 'default';
                 return;
             }
+
+            // Hide loading if single assembly
+            hideMenuLoading();
 
             // Single assembly (current behavior)
             console.log('Single assembly found, loading directly');
@@ -867,7 +878,15 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
 
     const matchingFace = findMatchingFaces(closestFace, attachGeometryData.faces, attachPoint.userData.attachmentType);
     if (!matchingFace) {
-        console.error('No matching face pattern found');
+        const fileName = mesh.userData.modelPath.split('/').pop();
+        const errorMessage = `No matching hole pattern found for ${fileName}. The hole pattern on this model does not match the attachment point.`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+
+        // Clean up - remove the mesh we just added
+        scene.remove(mesh);
+        attachedModels.delete(attachPoint);
+
         return;
     }
 
@@ -1724,6 +1743,10 @@ async function selectAssemblyVariant(variantIndex) {
     const baseGeometryData = data.baseGeometryData;
     const modelPath = data.modelPath;
 
+    // Show loading state
+    showMenuLoading('Loading assembly...');
+    document.body.style.cursor = 'wait';
+
     // Remove existing model if present
     if (attachedModels.has(attachPoint)) {
         const oldModel = attachedModels.get(attachPoint);
@@ -1742,6 +1765,9 @@ async function selectAssemblyVariant(variantIndex) {
         modelPath
     );
 
+    // Hide loading
+    hideMenuLoading();
+
     if (assembly) {
         hideMenu();
         console.log('Assembly attached successfully:', variant.name);
@@ -1750,6 +1776,73 @@ async function selectAssemblyVariant(variantIndex) {
     // Clean up
     delete window.assemblyVariantsData;
     document.body.style.cursor = 'default';
+}
+
+// Menu loading state functions
+function showMenuLoading(message = 'Loading...') {
+    const menuElement = document.getElementById('modelSelect');
+    if (!menuElement) return;
+
+    // Create or update loading overlay
+    let loadingOverlay = menuElement.querySelector('.menu-loading-overlay');
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'menu-loading-overlay';
+        loadingOverlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            border-radius: 5px;
+        `;
+
+        const spinner = document.createElement('div');
+        spinner.className = 'menu-spinner';
+        spinner.style.cssText = `
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        `;
+
+        const text = document.createElement('div');
+        text.className = 'menu-loading-text';
+        text.style.cssText = `
+            color: #333;
+            font-size: 14px;
+            font-weight: 500;
+        `;
+        text.textContent = message;
+
+        loadingOverlay.appendChild(spinner);
+        loadingOverlay.appendChild(text);
+        menuElement.appendChild(loadingOverlay);
+    } else {
+        // Update message
+        const text = loadingOverlay.querySelector('.menu-loading-text');
+        if (text) text.textContent = message;
+        loadingOverlay.style.display = 'flex';
+    }
+}
+
+function hideMenuLoading() {
+    const menuElement = document.getElementById('modelSelect');
+    if (!menuElement) return;
+
+    const loadingOverlay = menuElement.querySelector('.menu-loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
 }
 
 // Export functions for use in other modules

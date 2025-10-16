@@ -369,7 +369,7 @@ if ($forceRefresh || !file_exists($cacheFile)) {
 <body>
     <div class="header">
         <div class="header-content">
-            <a href="/" class="home-btn">← Home</a>
+            <a href="/" class="home-btn"><i class="fas fa-home"></i> Home</a>
             <div>
                 <h1>JSON Coverage Tracker</h1>
                 <?php if (isset($lastUpdated)): ?>
@@ -379,7 +379,8 @@ if ($forceRefresh || !file_exists($cacheFile)) {
             <div class="stats-badge">
                 <?php echo $totalMissing; ?> STL<?php echo $totalMissing !== 1 ? 's' : ''; ?> missing JSON<?php echo $totalMissing !== 1 ? 's' : ''; ?>
             </div>
-            <a href="?refresh=1" class="refresh-btn">🔄 Refresh Data</a>
+            <a href="../assembly-overlap-checker" class="home-btn" style="background-color: #1890ff;"><i class="fas fa-tools"></i> Assembly +N Namer</a>
+            <a href="?refresh=1" class="refresh-btn"><i class="fas fa-sync-alt"></i> Refresh Data</a>
         </div>
     </div>
 
