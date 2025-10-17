@@ -12,11 +12,7 @@ This project is a specialized tool designed for the Hero Me Gen 7 3D printer par
 ## Usage
 
 1. Clone or download the repository.
-2. Start a local server by running `server.py`:
-
-   ```bash
-   python server.py
-   ```
+2. Start a local server by running start-server.bat or drop it in a PHP web host server.
 
 3. Open your browser and navigate to http://localhost:8000/rebuilder.html.
 4. Use the following functionalities:
@@ -37,7 +33,7 @@ This project uses the following libraries:
 
 ## AI Disclaimer
 
-I am not a javascript developer, I can hardly write html. This code is written by Claude Sonnet 3.5, with an unreasonable amount of prompts. This is far too complex to be a "make a hero me builder" prompt, I am putting in a real amount of effort yelling at this damn robot. As much as a real dev would writing this by hand, though? Definitely not. Take a gander through the commit history if youd like to see how awful some of the first builds were. 
+I am not a javascript developer, I can hardly write html. This code is written by Claude Sonnet 3.5 (and onward, now Claude Code Sonnet 4.5), with an unreasonable amount of prompts. This is far too complex to be a "make a hero me builder" prompt, I am putting in a real amount of effort yelling at this damn robot. As much as a real dev would writing this by hand, though? Definitely not. Take a gander through the commit history if youd like to see how awful some of the first builds were. 
 
 ## Contributing
 
