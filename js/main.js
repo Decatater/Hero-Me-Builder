@@ -13,7 +13,12 @@ function init() {
         createDownloadButton();
         createLoadBuildButton();
         createWrenchButton();
-        
+
+        // Initialize helper menu
+        if (typeof initializeHelperMenu === 'function') {
+            initializeHelperMenu();
+        }
+
         // Setup event listeners
         setupEventListeners();
         

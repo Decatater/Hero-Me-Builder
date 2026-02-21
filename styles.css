@@ -257,6 +257,11 @@ body {
     text-overflow: ellipsis;
 }
 
+a.new-domain {
+            color: #27ae60;
+            
+        }
+
 /* Mobile Responsiveness */
 @media screen and (max-width: 768px) {
     #modelSelect {

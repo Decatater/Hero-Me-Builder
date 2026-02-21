@@ -154,6 +154,11 @@ async function attachAssemblyAtPoint(assemblyReference, attachPoint, baseGeometr
         // Track the assembly
         attachedModels.set(attachPoint, assemblyGroup);
 
+        // Update helper menu if it exists
+        if (typeof onModelAttached === 'function') {
+            onModelAttached();
+        }
+
         console.log('Assembly attached successfully');
         return assemblyGroup;
 
@@ -178,6 +183,34 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
     console.log('Assembly circles:', assemblyData.circles);
     console.log('Assembly orientation faces:', assemblyData.orientationFaces);
 
+    // Validate that assembly has circles defined
+    if (!assemblyData.circles || assemblyData.circles.length === 0) {
+        const errorMessage = `Assembly "${assemblyData.assemblyName}" has no mounting circles defined. Use the pre-aligner tool to mark the mounting holes.`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        // Remove the assembly group from scene
+        scene.remove(assemblyGroup);
+        return;
+    }
+
+    // Validate that base face has holes
+    if (!baseFace.holes || baseFace.holes.length === 0) {
+        const errorMessage = `Base attachment point has no holes defined. Cannot mount assembly.`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        scene.remove(assemblyGroup);
+        return;
+    }
+
+    // Validate that hole patterns match
+    if (baseFace.holes.length !== assemblyData.circles.length) {
+        const errorMessage = `Hole pattern mismatch: Assembly has ${assemblyData.circles.length} mounting hole(s) but attachment point has ${baseFace.holes.length} hole(s).`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        scene.remove(assemblyGroup);
+        return;
+    }
+
     // Calculate center of base mounting holes
     const baseCenter = calculateHolePatternCenter(baseFace.holes);
     const baseNormal = new THREE.Vector3(baseFace.normal.x, baseFace.normal.y, baseFace.normal.z);
@@ -196,7 +229,10 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
 
     // Get the first orientation face from the assembly data
     if (!assemblyData.orientationFaces || assemblyData.orientationFaces.length === 0) {
-        console.error('No orientation face found in assembly');
+        const errorMessage = `Assembly "${assemblyData.assemblyName}" has no orientation face defined. Use the pre-aligner tool to mark the orientation face.`;
+        console.error(errorMessage);
+        showUserError(errorMessage);
+        scene.remove(assemblyGroup);
         return;
     }
 
@@ -227,27 +263,10 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
     console.log('Applied mounting normal alignment');
 
     // Step 2: Rotate assembly based on attachment type
-    // Different attachment types have different orientation requirements
     const rotatedOrientNormal = orientNormal.clone().applyQuaternion(normalQuat);
-    let targetOrientation;
+    let targetOrientation = new THREE.Vector3(0, 0, 1); // Default: orientation face points up (Z+)
 
-    if (attachmentType === 'gantry' || attachmentType === 'gantryclip') {
-        // Gantry adapters: orientation face points up (Y+)
-        targetOrientation = new THREE.Vector3(0, 1, 0);
-        console.log('Using gantry alignment: orientation face -> Y+');
-    } else if (attachmentType === 'hotend' || attachmentType === 'directdrive' || attachmentType === 'spacer') {
-        // Hotends, direct drives, spacers: orientation face points up (Y+)
-        targetOrientation = new THREE.Vector3(0, 1, 0);
-        console.log('Using hotend/directdrive alignment: orientation face -> Y+');
-    } else if (attachmentType === 'wing') {
-        // Wings might need different orientation
-        targetOrientation = new THREE.Vector3(0, 1, 0);
-        console.log('Using wing alignment: orientation face -> Y+');
-    } else {
-        // Default: orientation face points up (Y+)
-        targetOrientation = new THREE.Vector3(0, 1, 0);
-        console.log('Using default alignment: orientation face -> Y+');
-    }
+    console.log('Using alignment: orientation face -> Z+');
 
     // Project the rotated orientation normal onto the plane perpendicular to base normal
     // and rotate around base normal to align it with target orientation
@@ -269,6 +288,48 @@ function alignAssemblyToBase(assemblyGroup, assemblyData, attachPoint, baseGeome
     assemblyGroup.quaternion.premultiply(rotQuat);
 
     console.log('Applied orientation alignment, angle:', angle);
+
+    // Step 2.5: If this is a directdrive mount with front face, apply additional front face rotation
+    if ((attachmentType === 'directdrive' || attachmentType === 'hotend') && assemblyData.frontFaces && assemblyData.frontFaces.length > 0) {
+        console.log('🔧 DIRECT DRIVE: Adding front face alignment');
+
+        // Get front face
+        const frontFace = assemblyData.frontFaces[0];
+        const frontNormal = new THREE.Vector3(
+            frontFace.normal.x,
+            frontFace.normal.y,
+            frontFace.normal.z
+        ).normalize();
+
+        console.log('Front normal (original):', frontNormal);
+
+        // Apply current rotation to see where front face is pointing now
+        const currentFrontNormal = frontNormal.clone().applyQuaternion(assemblyGroup.quaternion);
+        console.log('Front normal (after base alignment):', currentFrontNormal);
+
+        // We want the front to point toward Y- (camera is at Z+, looking toward -Z, so Y- is "forward" toward camera)
+        const targetFront = new THREE.Vector3(0, -1, 0);
+
+        // Project both onto XY plane (perpendicular to Z/up)
+        const currentFrontXY = new THREE.Vector3(currentFrontNormal.x, currentFrontNormal.y, 0).normalize();
+        const targetFrontXY = new THREE.Vector3(targetFront.x, targetFront.y, 0).normalize();
+
+        console.log('Current front (XY plane):', currentFrontXY);
+        console.log('Target front (XY plane):', targetFrontXY);
+
+        // Calculate rotation needed around Z axis
+        const dotProduct = currentFrontXY.dot(targetFrontXY);
+        const crossProduct = new THREE.Vector3().crossVectors(currentFrontXY, targetFrontXY);
+        const rotationAngle = Math.atan2(crossProduct.z, dotProduct);
+
+        console.log('Front rotation angle needed (degrees):', rotationAngle * 180 / Math.PI);
+
+        // Apply rotation around Z axis (up)
+        const zAxisRotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rotationAngle);
+        assemblyGroup.quaternion.premultiply(zAxisRotation);
+
+        console.log('✅ Applied front face alignment');
+    }
 
     // Step 3: Position the assembly so mounting holes align
     const transformedAssemblyCenter = assemblyHoleCenter.clone().applyQuaternion(assemblyGroup.quaternion);

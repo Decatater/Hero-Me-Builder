@@ -78,13 +78,11 @@ const categoryMenus = {
             let hasCableManagement = false;
 
             attachedModels.forEach((model, point) => {
-                if (point.userData?.attachmentType === 'wing') {
-                    const modelPath = model.userData.modelPath.toLowerCase();
-                    if (modelPath.includes('cablemanagement')) {
-                        hasCableManagement = true;
-                    } else {
-                        hasProbeWing = true;
-                    }
+                const attachmentType = point.userData?.attachmentType;
+                if (attachmentType === 'cabletower') {
+                    hasCableManagement = true;
+                } else if (attachmentType === 'wing') {
+                    hasProbeWing = true;
                 }
             });
 
@@ -202,7 +200,8 @@ const partColors = {
     'adxl': 0xa159e4,      // Pastel Purple
     'gantryclip': 0x91cdcf, // Light Blue
     'directdrive': 0xff6600, // Bright Orange
-    'spacer': 0xb19cd9     // Light Purple
+    'spacer': 0xb19cd9,     // Light Purple
+    'cabletower': 0x20b2aa  // Light Sea Green
 };
 
 

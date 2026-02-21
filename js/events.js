@@ -660,6 +660,11 @@ function onDoubleClick(event) {
             targetPoint.visible = true;
             attachedModels.delete(targetPoint);
 
+            // Update helper menu if it exists
+            if (typeof onModelDetached === 'function') {
+                onModelDetached();
+            }
+
             // For primary models, recreate attachment points
             if (!targetMesh.userData.parentModel) {
                 createAttachmentPoints(mainModel);

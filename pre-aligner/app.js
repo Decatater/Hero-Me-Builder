@@ -13,7 +13,11 @@ let currentMode = 'translate';
 let orientationFaceMode = false;
 let circleDetectionMode = false;
 let alignFaceMode = false;
+let frontFaceMode = false;
 let circleHoverHighlight = null;
+
+// Front face storage (modelId -> faceData + highlight)
+const frontFaces = new Map();
 
 // Initialize application
 function init() {
@@ -66,7 +70,7 @@ function init() {
     transformControl = new TransformControlManager(camera, renderer, scene);
     faceDetector = new FaceDetector(scene);
     circleDetector = new CircleDetector(scene);
-    exportManager = new ExportManager(modelManager, circleDetector, faceDetector);
+    exportManager = new ExportManager(modelManager, circleDetector, faceDetector, frontFaces);
 
     // Setup raycaster for clicking
     raycaster = new THREE.Raycaster();
@@ -128,6 +132,7 @@ function setupEventListeners() {
 
     // Tool buttons
     document.getElementById('selectOrientationFace').addEventListener('click', toggleOrientationFaceMode);
+    document.getElementById('selectFrontFace').addEventListener('click', toggleFrontFaceMode);
     document.getElementById('alignFaceMode').addEventListener('click', toggleAlignFaceMode);
     document.getElementById('detectCirclesMode').addEventListener('click', toggleCircleDetectionMode);
     document.getElementById('exportAssembly').addEventListener('click', exportAssembly);
@@ -153,6 +158,7 @@ function toggleOrientationFaceMode() {
         // Disable other modes
         if (circleDetectionMode) toggleCircleDetectionMode();
         if (alignFaceMode) toggleAlignFaceMode();
+        if (frontFaceMode) toggleFrontFaceMode();
 
         button.classList.add('active');
         button.style.background = '#ff9800';
@@ -165,6 +171,27 @@ function toggleOrientationFaceMode() {
     }
 }
 
+function toggleFrontFaceMode() {
+    frontFaceMode = !frontFaceMode;
+    const button = document.getElementById('selectFrontFace');
+
+    if (frontFaceMode) {
+        // Disable other modes
+        if (circleDetectionMode) toggleCircleDetectionMode();
+        if (orientationFaceMode) toggleOrientationFaceMode();
+        if (alignFaceMode) toggleAlignFaceMode();
+
+        button.classList.add('active');
+        button.style.background = '#ff4500';
+        updateStatus('Click a face to set as front face for the selected model');
+    } else {
+        button.classList.remove('active');
+        button.style.background = '';
+        faceDetector.clearHighlight();
+        updateStatus('Front face mode cancelled');
+    }
+}
+
 function toggleAlignFaceMode() {
     alignFaceMode = !alignFaceMode;
     const button = document.getElementById('alignFaceMode');
@@ -173,6 +200,7 @@ function toggleAlignFaceMode() {
         // Disable other modes
         if (circleDetectionMode) toggleCircleDetectionMode();
         if (orientationFaceMode) toggleOrientationFaceMode();
+        if (frontFaceMode) toggleFrontFaceMode();
 
         button.classList.add('active');
         button.style.background = '#9c27b0';
@@ -193,6 +221,7 @@ function toggleCircleDetectionMode() {
         // Disable other modes
         if (orientationFaceMode) toggleOrientationFaceMode();
         if (alignFaceMode) toggleAlignFaceMode();
+        if (frontFaceMode) toggleFrontFaceMode();
 
         button.classList.add('active');
         button.style.background = '#ff9800';
@@ -502,6 +531,19 @@ function onCanvasClick(event) {
             return;
         }
 
+        // Handle front face selection
+        if (frontFaceMode) {
+            const faceData = faceDetector.getHighlightedFaceData();
+            if (faceData) {
+                setFrontFace(activeModel.id, faceData);
+                const rotation = faceDetector.calculateRotation(faceData.normal);
+                updateStatus(`Front face set - Normal: (${rotation.x}°, ${rotation.y}°, ${rotation.z}°), Size: ${faceData.dimensions.width.toFixed(2)}×${faceData.dimensions.height.toFixed(2)}mm`);
+                updateOrientationInfo();
+            }
+            toggleFrontFaceMode();
+            return;
+        }
+
         // Handle face alignment
         if (alignFaceMode) {
             const faceData = faceDetector.getHighlightedFaceData();
@@ -564,6 +606,9 @@ function onCanvasMouseMove(event) {
         // Show face highlight in orientation mode
         if (orientationFaceMode) {
             faceDetector.showFaceHighlight(activeModel.mesh, intersect, 0x4CAF50);
+        } else if (frontFaceMode) {
+            // Show face highlight in orange for front face mode
+            faceDetector.showFaceHighlight(activeModel.mesh, intersect, 0xff4500);
         } else if (alignFaceMode) {
             // Show face highlight in purple for align mode
             faceDetector.showFaceHighlight(activeModel.mesh, intersect, 0x9c27b0);
@@ -635,6 +680,24 @@ function clearCircleHoverHighlight() {
     }
 }
 
+function setFrontFace(modelId, faceData) {
+    // Remove old front face highlight if exists
+    const oldFrontFace = frontFaces.get(modelId);
+    if (oldFrontFace && oldFrontFace.highlight) {
+        scene.remove(oldFrontFace.highlight);
+    }
+
+    // Create permanent highlight for front face (orange color)
+    const highlight = faceDetector.createFaceHighlight(faceData, 0xff4500, 0.3);
+
+    frontFaces.set(modelId, {
+        ...faceData,
+        highlight: highlight
+    });
+
+    scene.add(highlight);
+}
+
 function alignFaceToNearestPlane(model, faceData) {
     const normal = faceData.normal.clone();
 
@@ -696,6 +759,11 @@ function alignFaceToNearestPlane(model, faceData) {
         orientationFace.highlight.quaternion.premultiply(quaternion);
     }
 
+    const frontFace = frontFaces.get(model.id);
+    if (frontFace && frontFace.highlight) {
+        frontFace.highlight.quaternion.premultiply(quaternion);
+    }
+
     updateStatus(`Face aligned to ${closestDirection.axis} plane (was ${angleDegrees.toFixed(2)}° off)`);
 }
 
@@ -749,10 +817,13 @@ function updateOrientationInfo() {
     }
 
     const orientationFace = faceDetector.getOrientationFace(activeModel.id);
+    const frontFace = frontFaces.get(activeModel.id);
+
+    let html = '';
 
     if (orientationFace) {
         const rotation = faceDetector.calculateRotation(orientationFace.normal);
-        infoElement.innerHTML = `
+        html += `
             <h3>Orientation Face (${activeModel.name})</h3>
             <div style="font-size: 12px; line-height: 1.6;">
                 Normal: (${rotation.x.toFixed(1)}°, ${rotation.y.toFixed(1)}°, ${rotation.z.toFixed(1)}°)<br>
@@ -760,9 +831,21 @@ function updateOrientationInfo() {
                 Center: (${orientationFace.center.x.toFixed(2)}, ${orientationFace.center.y.toFixed(2)}, ${orientationFace.center.z.toFixed(2)})
             </div>
         `;
-    } else {
-        infoElement.innerHTML = '';
     }
+
+    if (frontFace) {
+        const rotation = faceDetector.calculateRotation(frontFace.normal);
+        html += `
+            <h3 style="margin-top: ${orientationFace ? '15px' : '0'};">Front Face (${activeModel.name})</h3>
+            <div style="font-size: 12px; line-height: 1.6; color: #ff4500;">
+                Normal: (${rotation.x.toFixed(1)}°, ${rotation.y.toFixed(1)}°, ${rotation.z.toFixed(1)}°)<br>
+                Size: ${frontFace.dimensions.width.toFixed(2)} × ${frontFace.dimensions.height.toFixed(2)}mm<br>
+                Center: (${frontFace.center.x.toFixed(2)}, ${frontFace.center.y.toFixed(2)}, ${frontFace.center.z.toFixed(2)})
+            </div>
+        `;
+    }
+
+    infoElement.innerHTML = html;
 }
 
 async function exportAssembly() {

@@ -27,7 +27,7 @@ async function loadDirectoryStructure() {
 
 // Load geometry data from JSON files
 // Show user-visible error message
-function showUserError(message) {
+function showUserError(message, errorType = 'unknown') {
     // Create error message element
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
@@ -46,6 +46,19 @@ function showUserError(message) {
     errorDiv.textContent = message;
 
     document.body.appendChild(errorDiv);
+
+    // Track error in Google Analytics with specific error type
+    if (typeof gtag === 'function') {
+        gtag('event', 'error_encountered', {
+            'event_category': 'Error',
+            'event_label': `${errorType}: ${message}`,
+            'error_type': errorType,
+            'value': 1
+        });
+        console.log(`GA Event: error_encountered - ${errorType}`);
+    } else {
+        console.warn('gtag not available for error tracking');
+    }
 
     // Auto-remove after 5 seconds
     setTimeout(() => {
@@ -92,7 +105,7 @@ async function loadGeometryData(modelPath) {
             const fileName = modelPath.split('/').pop();
             const errorMessage = `Missing geometry data for ${fileName}. This model cannot be attached without its .json file.`;
             console.error(errorMessage);
-            showUserError(errorMessage);
+            showUserError(errorMessage, 'json_not_found');
             return null;
         }
         const data = await response.json();
@@ -109,7 +122,7 @@ async function loadGeometryData(modelPath) {
         const fileName = modelPath.split('/').pop();
         const errorMessage = `Error loading geometry data for ${fileName}: ${error.message}`;
         console.error(errorMessage);
-        showUserError(errorMessage);
+        showUserError(errorMessage, 'json_invalid');
         return null;
     }
 }
@@ -126,7 +139,7 @@ async function loadAssemblyData(assemblyFileName, partPath) {
         if (!response.ok) {
             const errorMessage = `Missing assembly file: ${assemblyFileName}`;
             console.error(errorMessage);
-            showUserError(errorMessage);
+            showUserError(errorMessage, 'assembly_not_found');
             return null;
         }
         const data = await response.json();
@@ -135,7 +148,7 @@ async function loadAssemblyData(assemblyFileName, partPath) {
     } catch (error) {
         const errorMessage = `Error loading assembly data for ${assemblyFileName}: ${error.message}`;
         console.error(errorMessage);
-        showUserError(errorMessage);
+        showUserError(errorMessage, 'assembly_invalid');
         return null;
     }
 }

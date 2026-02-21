@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNLT432CYL"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CNLT432CYL');
+    </script>
     <title>STL Pre-Aligner</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="../fonts/fontawesome/css/all.min.css">
@@ -46,7 +55,7 @@
             <div id="viewerHud" class="viewer-hud">
                 <div id="hoverInfo"></div>
             </div>
-            <a href="https://heromebuilder.site" class="home-button">
+            <a href="../index.html" class="home-button">
                 <i class="fas fa-home"></i> Home
             </a>
         </div>
@@ -57,6 +66,9 @@
             <div class="controls">
                 <button id="selectOrientationFace" class="button">
                     <i class="fas fa-compass"></i> Select Orientation Face
+                </button>
+                <button id="selectFrontFace" class="button">
+                    <i class="fas fa-arrow-right"></i> Select Front Face
                 </button>
                 <button id="alignFaceMode" class="button">
                     <i class="fas fa-level-up-alt"></i> Align Face to Plane
@@ -111,5 +123,6 @@
     <script src="modules/CircleDetector.js"></script>
     <script src="modules/ExportManager.js"></script>
     <script src="app.js"></script>
+    <script src="../js/cookie-consent.js"></script>
 </body>
 </html>

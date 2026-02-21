@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNLT432CYL"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CNLT432CYL');
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -33,13 +42,21 @@
 
         .main-menu-header {
             margin-bottom: 2rem;
-            max-width: 400px;
+            max-width: 800px;
             width: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .main-menu-header img {
             width: 100%;
             height: auto;
+        }
+
+        .main-menu-header img.no-scale {
+            width: 35% !important;
+            max-width: 280px;
         }
 
         .menu-buttons {
@@ -326,6 +343,229 @@
             background-color: #73d13d;
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .helper-icon-button {
+            position: fixed;
+            top: 20px;
+            left: 80px;
+            width: 50px;
+            height: 50px;
+            background-color: #fadb14;
+            color: #2c3e50;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            z-index: 10000;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .helper-icon-button:hover {
+            background-color: #ffec3d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .helper-icon-button.open {
+            background-color: #ff9800;
+        }
+
+        .helper-icon-button.open:hover {
+            background-color: #ffa726;
+        }
+
+        .helper-menu {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            width: 300px;
+            max-height: calc(100vh - 120px);
+            background-color: rgba(44, 62, 80, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .helper-menu.open {
+            display: block;
+        }
+
+        .helper-menu-header {
+            padding: 15px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            border-bottom: 2px solid #34495e;
+            background-color: rgba(52, 73, 94, 0.8);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .helper-menu-subheader {
+            font-size: 11px;
+            font-weight: normal;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .helper-menu-content {
+            padding: 10px;
+        }
+
+        .helper-part-item {
+            padding: 10px 12px;
+            margin: 6px 0;
+            background-color: rgba(52, 73, 94, 0.6);
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid transparent;
+            user-select: none;
+        }
+
+        .helper-part-item:hover {
+            background-color: rgba(52, 152, 219, 0.4);
+            transform: translateX(4px);
+        }
+
+        .helper-part-item:active {
+            transform: translateX(2px);
+            background-color: rgba(52, 152, 219, 0.6);
+        }
+
+        .helper-part-item.needed {
+            border-left-color: #fadb14;
+        }
+
+        .helper-part-item.satisfied {
+            border-left-color: #52c41a;
+        }
+
+        .helper-part-item.optional {
+            opacity: 0.7;
+        }
+
+        .helper-part-item.child-part {
+            margin-left: 15px;
+            font-size: 12px;
+            background-color: rgba(52, 73, 94, 0.4);
+        }
+
+        .helper-part-name {
+            flex: 1;
+        }
+
+        .helper-part-count {
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 14px;
+        }
+
+        .helper-part-item.needed .helper-part-count {
+            color: #fadb14;
+        }
+
+        .helper-part-item.satisfied .helper-part-count {
+            color: #52c41a;
+        }
+
+        .helper-optional-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin-left: 6px;
+        }
+
+        .helper-description-box {
+            position: fixed;
+            top: 80px;
+            left: 340px;
+            width: 350px;
+            max-height: calc(100vh - 120px);
+            background-color: rgba(44, 62, 80, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            overflow-y: auto;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .helper-description-box.open {
+            display: block;
+        }
+
+        .helper-description-header {
+            padding: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            border-bottom: 2px solid #34495e;
+            background-color: rgba(52, 73, 94, 0.8);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .helper-description-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+            transition: background-color 0.2s;
+        }
+
+        .helper-description-close:hover {
+            background-color: rgba(231, 76, 60, 0.8);
+        }
+
+        .helper-description-content {
+            padding: 15px;
+            color: #ecf0f1;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+
+        .about-link {
+            color: #27ae60;
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 1rem;
+        }
+
+        .about-link:hover {
+            text-decoration: underline;
         }
 
         .json-coverage-box {
@@ -758,13 +998,15 @@
 <body>
     <div id="mainMenu">
         <div class="main-menu-header">
-            <img src="builder.png" alt="Hero Me Builder Header">
+            <img src="builder.png?v=1.0.0" alt="Hero Me Builder Header">
+            <img src="mobiledev.png?v=1.0.0" alt="Mobile Dev" class="no-scale">
         </div>
         <div class="menu-buttons">
             <button class="menu-button" onclick="startBuilder()">Start Builder</button>
             <button class="menu-button" onclick="showAbout()">How to use</button>
             <a href="changelog.html" class="menu-button">Changelogs</a>
         </div>
+        <a href="https://dekatater.com/the-hero-me-builder/" class="about-link" target="_blank">About</a>
     </div>
 
     <div id="aboutSection">
@@ -799,20 +1041,47 @@
     <div id="jsonCoverageBox" class="json-coverage-box">
         <div class="coverage-title">Part Coverage</div>
         <div class="coverage-stat">Loading...</div>
-        <a href="https://heromebuilder.site/json-tracker" class="coverage-details-btn">View Details</a>
+        <a href="json-tracker" class="coverage-details-btn">View Details</a>
     </div>
 
     <!-- Utility Buttons -->
     <div class="utility-buttons">
-        <a href="https://heromebuilder.site/pre-aligner" class="utility-button pre-aligner-button">Pre-Aligner</a>
-        <a href="https://heromebuilder.site/marker" class="utility-button marker-button">Marker</a>
-        <a href="https://heromebuilder.site/tracker" class="utility-button tracker-button">Issue Tracker</a>
+        <a href="pre-aligner" class="utility-button pre-aligner-button">Pre-Aligner</a>
+        <a href="marker" class="utility-button marker-button">Marker</a>
+        <a href="tracker" class="utility-button tracker-button">Issue Tracker</a>
     </div>
 
     <!-- Home Button for Builder (hidden initially) -->
     <button class="home-icon-button" onclick="goHome()" title="Back to Main Menu">
         <i class="fas fa-home"></i>
     </button>
+
+    <!-- Helper Menu Button (hidden initially) -->
+    <button class="helper-icon-button" onclick="toggleHelperMenu()" title="Part Checklist Helper">
+        <i class="fas fa-question"></i>
+    </button>
+
+    <!-- Helper Menu Panel -->
+    <div id="helperMenu" class="helper-menu">
+        <div class="helper-menu-header">
+            Part Checklist
+            <div class="helper-menu-subheader">Click to learn more</div>
+        </div>
+        <div id="helperMenuContent" class="helper-menu-content">
+            <!-- Content will be dynamically generated -->
+        </div>
+    </div>
+
+    <!-- Helper Description Panel -->
+    <div id="helperDescriptionBox" class="helper-description-box">
+        <div class="helper-description-header">
+            <span id="helperDescriptionTitle">Part Description</span>
+            <button class="helper-description-close" onclick="closeHelperDescription()" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="helperDescriptionContent" class="helper-description-content">
+            <!-- Description will be dynamically generated -->
+        </div>
+    </div>
 
     <!-- Contributors Button and Menu -->
     <button class="contributors-button" onclick="toggleContributors()">Contributors</button>
@@ -826,6 +1095,7 @@
             <div class="contributor-item">TheSlumberingOne</div>
             <div class="contributor-item">THE_LAST_JAGUAR</div>
             <div class="contributor-item">BSense</div>
+            <div class="contributor-item">Syn_X</div>
         </div>
     </div>
 
@@ -866,7 +1136,9 @@
 
     <script>
         // Version string for cache busting - change this to force reload all scripts
-        const SCRIPT_VERSION = '0.2.3';
+        const SCRIPT_VERSION = '0.2.9';
+        // Image version for cache busting - increment when images are updated
+        const IMAGE_VERSION = '1.0.0';
     </script>
 
     <!-- Hero Me Builder Modular Scripts - Load in dependency order -->
@@ -884,8 +1156,10 @@
             'js/assemblies.js',
             'js/models.js',
             'js/ui.js',
+            'js/helper.js',  // Helper menu system
             'js/events.js',
-            'js/main.js'
+            'js/main.js',
+            'js/cookie-consent.js'
         ];
 
         scripts.forEach(src => {
@@ -899,6 +1173,15 @@
         let appScriptLoaded = false;
 
         function startBuilder() {
+            // Track builder start in Google Analytics
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'start_builder', {
+                    'event_category': 'Builder',
+                    'event_label': 'User Started Builder',
+                    'value': 1
+                });
+            }
+
             document.getElementById('mainMenu').style.display = 'none';
             document.getElementById('loadingScreen').style.display = 'flex';
             document.querySelector('.disclaimer-box').style.display = 'none';
@@ -912,8 +1195,9 @@
             document.getElementById('contributorsMenu').style.display = 'none';
             document.getElementById('jsonCoverageBox').style.display = 'none';
             
-            // Show home button in builder
+            // Show home button and helper button in builder
             document.querySelector('.home-icon-button').style.display = 'flex';
+            document.querySelector('.helper-icon-button').style.display = 'flex';
 
             // Show mobile builder menu on mobile (same detection as main menu) - but keep it collapsed initially
             const mobileBuilderMenu = document.getElementById('mobileBuilderMenu');
@@ -1038,7 +1322,7 @@
         </div>
         <div class="mobile-menu-content">
             <div class="mobile-menu-buttons">
-                <a href="https://heromebuilder.site/changelog.html" class="mobile-menu-button">Changelog</a>
+                <a href="changelog.html" class="mobile-menu-button">Changelog</a>
                 <button class="mobile-menu-button" onclick="showAbout(); toggleMobileMenu();">How to use</button>
                 <button class="mobile-menu-button" onclick="toggleContributors(); toggleMobileMenu();">Contributors</button>
             </div>
@@ -1050,12 +1334,12 @@
 
             <div style="background: #34495e; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">Bug Tracker</p>
-                <a href="https://heromebuilder.site/tracker" class="mobile-menu-button" style="background: #e67e22; margin: 0;">Issue Tracker</a>
+                <a href="tracker" class="mobile-menu-button" style="background: #e67e22; margin: 0;">Issue Tracker</a>
             </div>
 
             <div style="background: #34495e; padding: 15px; border-radius: 8px;">
                 <p style="color: #ecf0f1; margin: 0 0 10px 0; font-size: 0.9rem; font-weight: bold;">JSON Coverage</p>
-                <a href="https://heromebuilder.site/json-tracker" class="mobile-menu-button" style="background: #722ed1; margin: 0;">JSON Tracker</a>
+                <a href="json-tracker" class="mobile-menu-button" style="background: #722ed1; margin: 0;">JSON Tracker</a>
             </div>
         </div>
     </div>

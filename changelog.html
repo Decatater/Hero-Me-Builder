@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNLT432CYL"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CNLT432CYL');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hero Me Builder Changelog</title>
@@ -153,12 +162,14 @@
 <body>
     <div class="container">
         <!-- Home Button -->
-        <a href="https://heromebuilder.site" class="home-button">Home</a>
+        <a href="index.html" class="home-button">Home</a>
         
         <h1 class="header-with-button">Hero Me Builder Changelog</h1>
         <!--BELOW: Define Tabs-->
         <div class="tab-container">
-            <div class="tab active" onclick="openTab(event, 'v023')">v0.2.3</div>
+            <div class="tab active" onclick="openTab(event, 'v025')">v0.2.5</div>
+            <div class="tab" onclick="openTab(event, 'v024')">v0.2.4</div>
+            <div class="tab" onclick="openTab(event, 'v023')">v0.2.3</div>
             <div class="tab" onclick="openTab(event, 'v022')">v0.2.2</div>
             <div class="tab" onclick="openTab(event, 'v021')">v0.2.1</div>
             <div class="tab" onclick="openTab(event, 'v020')">v0.2.0</div>
@@ -173,7 +184,35 @@
             <div class="tab" onclick="openTab(event, 'v011')">v0.1.1</div>
         </div>
         <!--BELOW: Define Each Tabs Contents-->
-        <div id="v023" class="tab-content active">
+        <div id="v025" class="tab-content active">
+            <h2>Version 0.2.5 BETA - November 7 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Part Checklist Helper - A handy yellow question mark button appears next to the Home button in the builder</li>
+                <li><span class="category">Added:</span> Interactive checklist showing which parts you've added and which ones you still need for your build</li>
+                <li><span class="category">Added:</span> Smart part tracking that knows which parts are required, optional, or only needed when certain other parts are present</li>
+                <li><span class="category">Added:</span> Color-coded progress tracking - yellow for parts you need, green for parts you've already added</li>
+                <li><span class="category">Added:</span> Hover over any part in the checklist to see its attachment points pulse in the 3D view, making it easy to find where to attach things</li>
+                <li><span class="category">Added:</span> Click any part name in the checklist to see a detailed description of what that part is and why you might need it</li>
+                <li><span class="category">Added:</span> Cable Tower parts are now properly distinguished from ABL Wings and tracked separately in your build</li>
+                <li><span class="category">Improved:</span> Checklist intelligently shows child parts only when their parent parts are installed (like probe mounts only appearing when you have a wing)</li>
+            </ul>
+        </div>
+
+        <div id="v024" class="tab-content">
+            <h2>Version 0.2.4 BETA - October 19 2025</h2>
+            <ul>
+                <li><span class="category">Added:</span> Front face support in Pre-Aligner tool - Mark both orientation and front faces for complete assembly orientation control</li>
+                <li><span class="category">Added:</span> Front face export in assembly JSON files for proper directional alignment</li>
+                <li><span class="category">Added:</span> Cookie consent banner for GDPR compliance with accept/decline options</li>
+                <li><span class="category">Added:</span> Assembly +N Namer tool for automatically generating variant JSON files for multi-assembly parts</li>
+                <li><span class="category">Improved:</span> Assembly validation now checks for missing circles, orientation faces, and pattern mismatches with clear error messages</li>
+                <li><span class="category">Improved:</span> Loading feedback with visual overlays and spinners when scanning for assembly variants and loading files</li>
+                <li><span class="category">Fixed:</span> Direct drive assemblies now maintain consistent forward orientation regardless of what they're mounted to</li>
+                <li><span class="category">Fixed:</span> Front face data now exports correctly from Pre-Aligner for all models in assembly</li>
+            </ul>
+        </div>
+
+        <div id="v023" class="tab-content">
             <h2>Version 0.2.3 BETA - October 13 2025</h2>
             <ul>
                 <li><span class="category">Added:</span> Multi-assembly support - Parts used in multiple assemblies now show a menu to select which assembly to build</li>
@@ -318,7 +357,7 @@
             <h2>Version 0.1.1 Initial ALPHA - December 2024</h2>
             <h2 style="text-align: center;">Hello World!</h2>
             <ul>
-                <li><span class="category">Uploaded:</span> The Hero Me Builder to <a href="https://heromebuilder.site">heromebuilder.site</a>!</li>
+                <li><span class="category">Uploaded:</span> The Hero Me Builder to <a href="https://heromebuilder.com">heromebuilder.com</a>!</li>
                 <li><span class="category">Functionality:</span> Limited.</li>
                 <li><span class="category">Parts added:</span> Maybe one of each if that</li>
             </ul>
@@ -346,5 +385,6 @@
             evt.currentTarget.classList.add("active");
         }
     </script>
+    <script src="js/cookie-consent.js"></script>
 </body>
 </html>

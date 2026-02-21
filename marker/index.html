@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNLT432CYL"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CNLT432CYL');
+    </script>
     <title>Circle Detection Tool</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="../fonts/fontawesome/css/all.min.css">
@@ -9,7 +18,7 @@
     <div class="container">
         <div id="viewer">
             <div id="hoverGuide"></div>
-            <a href="https://heromebuilder.site" class="home-button">
+            <a href="../index.html" class="home-button">
                 <i class="fas fa-home"></i> Home
             </a>
         </div>
@@ -50,5 +59,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
     <script src="app.js"></script>
+    <script src="../js/cookie-consent.js"></script>
 </body>
 </html>

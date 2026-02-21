@@ -2,10 +2,11 @@
  * ExportManager - Handles JSON export/import of assembly data
  */
 class ExportManager {
-    constructor(modelManager, circleDetector, faceDetector) {
+    constructor(modelManager, circleDetector, faceDetector, frontFaces = null) {
         this.modelManager = modelManager;
         this.circleDetector = circleDetector;
         this.faceDetector = faceDetector;
+        this.frontFaces = frontFaces;
     }
 
     /**
@@ -32,7 +33,8 @@ class ExportManager {
             models: [],
             relationships: [],
             circles: [],
-            orientationFaces: []
+            orientationFaces: [],
+            frontFaces: []
         };
 
         // Export each model
@@ -102,6 +104,32 @@ class ExportManager {
                     dimensions: {
                         width: Math.round(orientationFace.dimensions.width * 100) / 100,
                         height: Math.round(orientationFace.dimensions.height * 100) / 100
+                    },
+                    rotation: rotation
+                });
+            }
+        });
+
+        // Export front faces
+        models.forEach(model => {
+            const frontFace = this.frontFaces ? this.frontFaces.get(model.id) : null;
+            if (frontFace) {
+                const rotation = this.faceDetector.calculateRotation(frontFace.normal);
+                exportData.frontFaces.push({
+                    modelId: model.id,
+                    normal: {
+                        x: Math.round(frontFace.normal.x * 100) / 100,
+                        y: Math.round(frontFace.normal.y * 100) / 100,
+                        z: Math.round(frontFace.normal.z * 100) / 100
+                    },
+                    center: {
+                        x: Math.round(frontFace.center.x * 100) / 100,
+                        y: Math.round(frontFace.center.y * 100) / 100,
+                        z: Math.round(frontFace.center.z * 100) / 100
+                    },
+                    dimensions: {
+                        width: Math.round(frontFace.dimensions.width * 100) / 100,
+                        height: Math.round(frontFace.dimensions.height * 100) / 100
                     },
                     rotation: rotation
                 });

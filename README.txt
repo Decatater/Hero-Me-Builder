@@ -19,4 +19,4 @@ A lot of spacers and niche parts are also not compatible with the Builder becaus
 Please consult the full Hero Me Gen 7 zip to see if any parts are required for your specific setup but not listed. https://www.printables.com/model/39322-hero-me-gen7-platform-release4 
 Help is also available through the Hero Me Community Discord, join us at https://discord.gg/QHKqQrvzZv 
 
-Report issues, or offer your own Hero Me community parts to be added, to support@heromebuilder.site
+Report issues, or offer your own Hero Me community parts to be added, to support@heromebuilder.com

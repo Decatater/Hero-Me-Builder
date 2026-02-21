@@ -338,6 +338,8 @@ async function attachModelAtPoint(modelPath) {
 
     // Set attachment type based on filename for directdrive menu items
     const fileName = modelPath.split('/').pop().toLowerCase();
+    const fullPath = modelPath.toLowerCase();
+
     if (selectedPoint.userData.originalType === 'directdrive' ||
         selectedPoint.userData.attachmentType === 'directdrive' ||
         selectedPoint.userData.attachmentType === 'spacer') {
@@ -346,6 +348,13 @@ async function attachModelAtPoint(modelPath) {
             selectedPoint.userData.attachmentType = 'spacer';
         } else {
             selectedPoint.userData.attachmentType = 'directdrive';
+        }
+    }
+
+    // Set attachment type for cable towers vs ABL wings
+    if (selectedPoint.userData.attachmentType === 'wing') {
+        if (fullPath.includes('cablemanagement')) {
+            selectedPoint.userData.attachmentType = 'cabletower';
         }
     }
 
@@ -516,7 +525,12 @@ async function attachModelAtPoint(modelPath) {
 
                 // Hide the menu
                 hideMenu();
-                
+
+                // Update helper menu if it exists
+                if (typeof onModelAttached === 'function') {
+                    onModelAttached();
+                }
+
                 // console.log(`Successfully attached ${modelPath} to ${attachmentType} point`);
             },
             function (progress) {
@@ -1327,39 +1341,45 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
             const normalQuat = new THREE.Quaternion().setFromUnitVectors(attachNormal, baseNormal.clone().negate());
             mesh.quaternion.copy(normalQuat);
 
-            // Get two holes from each pattern to establish orientation
+            // Get holes from each pattern
             const baseHoles = closestFace.holes;
             const attachHoles = matchingFace.holes;
-            const baseHole1 = baseHoles[0];
-            const baseHole2 = baseHoles[1];
-            const attachHole1 = attachHoles[0];
-            const attachHole2 = attachHoles[1];
 
-            // Calculate vectors between holes
-            const baseVector = new THREE.Vector3(
-                baseHole2.position.x - baseHole1.position.x,
-                baseHole2.position.y - baseHole1.position.y,
-                baseHole2.position.z - baseHole1.position.z
-            ).normalize();
+            // Check if we have at least 2 holes to establish orientation
+            if (baseHoles.length >= 2 && attachHoles.length >= 2) {
+                // Two-hole alignment: use vector between holes to establish orientation
+                const baseHole1 = baseHoles[0];
+                const baseHole2 = baseHoles[1];
+                const attachHole1 = attachHoles[0];
+                const attachHole2 = attachHoles[1];
 
-            const attachVector = new THREE.Vector3(
-                attachHole2.position.x - attachHole1.position.x,
-                attachHole2.position.y - attachHole1.position.y,
-                attachHole2.position.z - attachHole1.position.z
-            ).normalize();
+                // Calculate vectors between holes
+                const baseVector = new THREE.Vector3(
+                    baseHole2.position.x - baseHole1.position.x,
+                    baseHole2.position.y - baseHole1.position.y,
+                    baseHole2.position.z - baseHole1.position.z
+                ).normalize();
 
-            // Rotate the attachment vector by the normal quaternion
-            const rotatedAttachVector = attachVector.clone().applyQuaternion(normalQuat);
+                const attachVector = new THREE.Vector3(
+                    attachHole2.position.x - attachHole1.position.x,
+                    attachHole2.position.y - attachHole1.position.y,
+                    attachHole2.position.z - attachHole1.position.z
+                ).normalize();
 
-            // Calculate angle between the vectors on the mounting plane
-            const angle = Math.atan2(
-                baseVector.x * rotatedAttachVector.z - baseVector.z * rotatedAttachVector.x,
-                baseVector.x * rotatedAttachVector.x + baseVector.z * rotatedAttachVector.z
-            );
+                // Rotate the attachment vector by the normal quaternion
+                const rotatedAttachVector = attachVector.clone().applyQuaternion(normalQuat);
 
-            // Create and apply rotation around the base normal
-            const alignQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, angle);
-            mesh.quaternion.premultiply(alignQuat);
+                // Calculate angle between the vectors on the mounting plane
+                const angle = Math.atan2(
+                    baseVector.x * rotatedAttachVector.z - baseVector.z * rotatedAttachVector.x,
+                    baseVector.x * rotatedAttachVector.x + baseVector.z * rotatedAttachVector.z
+                );
+
+                // Create and apply rotation around the base normal
+                const alignQuat = new THREE.Quaternion().setFromAxisAngle(baseNormal, angle);
+                mesh.quaternion.premultiply(alignQuat);
+            }
+            // For single-hole clips, we rely on the normal alignment and orientation face
 
             // After hole alignment, check if orientation vector is pointing up
             const finalOrientation = attachOrientation.clone().applyQuaternion(mesh.quaternion);
@@ -1374,9 +1394,9 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
             const offset = baseCenter.clone().sub(transformedMountCenter);
             mesh.position.copy(offset);
 
-        } else if (attachPoint.userData.attachmentType === 'wing') {
-            // Wing alignment - EXACT copy of backup alignment from OLD/app.js
-            // console.log('🚨🚨🚨 USING BACKUP ALIGNMENT (for wings)');
+        } else if (attachPoint.userData.attachmentType === 'wing' || attachPoint.userData.attachmentType === 'cabletower') {
+            // Wing/Cable Tower alignment - EXACT copy of backup alignment from OLD/app.js
+            // console.log('🚨🚨🚨 USING BACKUP ALIGNMENT (for wings/cable towers)');
 
             const attachOrientation = new THREE.Vector3(
                 attachGeometryData.orientationFace.normal.x,
@@ -1419,9 +1439,10 @@ function alignGenericModel(mesh, attachPoint, baseGeometryData, attachGeometryDa
             }
         }
         
-        // Position non-special attachment types (skirts, wings, fanguards, gantry, and gantryclip handle their own positioning)
+        // Position non-special attachment types (skirts, wings, cable towers, fanguards, gantry, and gantryclip handle their own positioning)
         if (attachPoint.userData.attachmentType !== 'skirt' &&
             attachPoint.userData.attachmentType !== 'wing' &&
+            attachPoint.userData.attachmentType !== 'cabletower' &&
             attachPoint.userData.attachmentType !== 'fanguard' &&
             attachPoint.userData.attachmentType !== 'gantry' &&
             attachPoint.userData.attachmentType !== 'gantryclip') {

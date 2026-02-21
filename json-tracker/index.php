@@ -120,6 +120,15 @@ if ($forceRefresh || !file_exists($cacheFile)) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CNLT432CYL"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-CNLT432CYL');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JSON Coverage Tracker - Hero Me Builder</title>
@@ -471,5 +480,6 @@ if ($forceRefresh || !file_exists($cacheFile)) {
             }
         }
     </script>
+    <script src="../js/cookie-consent.js"></script>
 </body>
 </html>

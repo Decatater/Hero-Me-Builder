@@ -21,3 +21,9 @@ fonts
 builder.pdn
 heromedir
 json-tracker/cache.json
+.gitattributes
+setup-git-filters.bat
+setup-git-filters.ps1
+setup-git-filters.sh
+mobiledev.png
+helpermockup.png

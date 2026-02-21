@@ -107,10 +107,14 @@ function compareHolePatterns(face1, face2, isRiser = false) {
     // Special case for single holes
     if (face1.holes.length === 1 && face2.holes.length === 1) {
         // For single holes, we just check if the diameters are similar
-        const tolerance = 1.0; // 1mm tolerance for hole diameters
+        // Use larger tolerance for gantry clips since they often have clearance holes
+        const isGantryClip = (window.currentAttachmentPath && window.currentAttachmentPath.toLowerCase().includes('gantry')) ||
+                            (selectedPoint?.userData?.attachmentType === 'gantryclip');
+        const tolerance = isGantryClip ? 2.5 : 1.0; // 2.5mm tolerance for gantry clips, 1mm for others
         const diameterDiff = Math.abs(face1.holes[0].diameter - face2.holes[0].diameter);
         const score = diameterDiff <= tolerance ? 1.0 : 0.0;
-        // console.log(`Single hole comparison - diameters: ${face1.holes[0].diameter} vs ${face2.holes[0].diameter}, score: ${score}`);
+        console.log(`Single hole comparison - isGantryClip: ${isGantryClip}, tolerance: ${tolerance}, diameters: ${face1.holes[0].diameter} vs ${face2.holes[0].diameter}, diff: ${diameterDiff}, score: ${score}`);
+        console.log(`Path: ${window.currentAttachmentPath}, attachmentType: ${selectedPoint?.userData?.attachmentType}`);
         return score;
     }
 
@@ -305,11 +309,12 @@ function findClosestFace(faces, point) {
 
 // Find matching faces between base and attachment models
 function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
-    // console.log('\n=== Finding Matches Between Faces ===');
-    // console.log('Base face ID:', baseFace.faceId);
-    // console.log('Base face holes:', baseFace.holes.length);
-    // console.log('Current model path:', window.currentAttachmentPath);
-    // console.log('Attachment type:', attachmentType);
+    console.log('\n=== Finding Matches Between Faces ===');
+    console.log('Base face ID:', baseFace.faceId);
+    console.log('Base face holes:', baseFace.holes.length);
+    console.log('Attachment faces count:', attachmentFaces.length);
+    console.log('Current model path:', window.currentAttachmentPath);
+    console.log('Attachment type:', attachmentType);
 
     // Get the original type if it exists
     const originalType = selectedPoint?.userData?.originalType || attachmentType;
@@ -377,6 +382,11 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     const availableFaces = attachmentFaces.filter(face =>
         !isHolePatternUsed(window.currentAttachmentPath, face));
 
+    console.log('Available faces after filtering:', availableFaces.length);
+    availableFaces.forEach(face => {
+        console.log(`  Face ${face.faceId}: ${face.holes?.length || 0} holes`);
+    });
+
     const isRiser = window.currentAttachmentPath && window.currentAttachmentPath.toLowerCase().includes('riser');
 
     for (const attachFace of availableFaces) {
@@ -422,6 +432,7 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
     }
 
     if (bestMatch && bestTransform && maxScore > 0.6) {
+        console.log(`Match found! Face ${bestMatch.faceId} with score ${maxScore}`);
         bestMatch.bestTransform = bestTransform;
         bestMatch.patternMapping = {
             baseFaceId: baseFace.faceId,
@@ -437,6 +448,7 @@ function findMatchingFaces(baseFace, attachmentFaces, attachmentType) {
         return bestMatch;
     }
 
+    console.log(`No match found. Best score: ${maxScore} (threshold: 0.6)`);
     return null;
 }
 
